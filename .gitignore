@@ -1,0 +1,38 @@
+# Data - never commit. Synpuf is pulicly available data and its size would make it impossible to commit
+data/
+*.duckdb
+*.duckdb.wal
+*.csv
+*.zip
+!data/samples/*.csv
+# Exception for the tiny 1000 persons CI fixture
+
+# Secrets
+.env
+.env.*
+*.pem
+profiles.yml
+#Possible dtb profiles for the snowflake work in the future
+
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+
+# dbt / dagster / mlflow
+transform/target
+transform/dbt_packages
+transform/logs
+mlruns/
+mlartifacts/
+.dagster/
+
+
+# OS / editor
+.DS_Store
+.ipynb_checkpoints/
+.vscode/
+*.egg-info/
