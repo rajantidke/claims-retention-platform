@@ -67,3 +67,40 @@ Kept as a debugging trail and a memory aid across sessions — not a polished do
 **Fix**
 
 **Status / what's next**
+
+## 2026-09-01 — Week 2, Step 1 (cont.): First commit + GitHub push
+
+**Issue: trailing-whitespace hook blocked first commit attempt**
+- `.gitignore` had trailing spaces on a couple of inline-comment lines.
+  pre-commit's `trailing-whitespace` hook auto-fixed and blocked the commit
+  for review (expected/correct behavior — hooks don't silently modify staged
+  content past you).
+- While reviewing the fix, noticed `^M` (CRLF) characters in the diff — the
+  file had Windows-style line endings, likely from hand-typing through a
+  Windows-side WSL terminal/clipboard interaction.
+- Fixed properly rather than just re-committing: added `.gitattributes`
+  (`* text=auto eol=lf`) to force LF repo-wide going forward, and normalized
+  `.gitignore` with `sed -i 's/\r$//'`. Committed `.gitattributes` separately
+  since it was missed in the first pass.
+
+**Issue: egg-info directory almost got committed**
+- `uv pip install -e ".[dev]"` generates `claims_retention_platform.egg-info/`
+  as build metadata. Caught it in `git status` before committing — added
+  `*.egg-info/` to `.gitignore`.
+
+**GitHub auth**
+- `gh` wasn't installed; installed via `apt` (not `snap` — snap can be
+  unreliable under WSL due to systemd quirks).
+- `gh auth login` browser auto-open failed (no `xdg-open`/`wslview` in WSL
+  PATH) — expected, worked fine by manually opening
+  github.com/login/device and entering the one-time code.
+- First login attempt hit GitHub's rate limit (`slow_down`) from firing
+  `gh auth login` twice in quick succession — second attempt after a short
+  wait succeeded.
+
+**Result**
+- Repo live and public: https://github.com/rajantidke/claims-retention-platform
+- 2 commits on `main`: scaffold + gitattributes fix.
+
+**Status:** Step 1 complete. Next: Step 2 — read SynPUF documentation
+(Data Users Document, codebook, FAQ) before writing any ingest code.
