@@ -54,20 +54,6 @@ Kept as a debugging trail and a memory aid across sessions — not a polished do
 
 ---
 
-## Template for future entries
-
-## YYYY-MM-DD — Week N, Step X: <short description>
-
-**What was attempted**
-
-**What broke / issue faced**
-
-**Root cause**
-
-**Fix**
-
-**Status / what's next**
-
 ## 2026-09-01 — Week 2, Step 1 (cont.): First commit + GitHub push
 
 **Issue: trailing-whitespace hook blocked first commit attempt**
@@ -100,7 +86,23 @@ Kept as a debugging trail and a memory aid across sessions — not a polished do
 
 **Result**
 - Repo live and public: https://github.com/rajantidke/claims-retention-platform
-- 2 commits on `main`: scaffold + gitattributes fix.
+- 3 commits on `main`: scaffold + gitattributes fix + this log entry.
 
 **Status:** Step 1 complete. Next: Step 2 — read SynPUF documentation
 (Data Users Document, codebook, FAQ) before writing any ingest code.
+
+---
+
+## Template for future entries
+
+## YYYY-MM-DD — Week N, Step X: <short description>
+
+**What was attempted**
+
+**What broke / issue faced**
+
+**Root cause**
+
+**Fix**
+
+**Status / what's next**
