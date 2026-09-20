@@ -106,3 +106,21 @@ Kept as a debugging trail and a memory aid across sessions — not a polished do
 **Fix**
 
 **Status / what's next**
+
+## 2026-09-XX — Week 2, Step 3 (cont.): Formalized Sample 1/20 check as pytest
+
+- The Sample 1 vs Sample 20 verification was originally run as a disposable
+  terminal one-off (see prior entry). The runbook explicitly calls for this
+  to be written as a pytest test, not a manual check — missed that the first
+  time round.
+- Added `tests/test_sample_integrity.py`: parametrized beneficiary-count
+  check against codebook Table 2 figures (2008/2009/2010) plus the
+  2010-overlaps-with-2008 check, both now automated and rerunnable via
+  `pytest` / the Makefile's `make test` target.
+- One typo caught on first run (`excepted` for `expected` — a NameError,
+  not a logic bug) and fixed via sed.
+- All 4 tests passing against the actual downloaded data, confirming the
+  earlier manual result (Sample 1 confirmed, not Sample 20).
+
+**Status:** Step 3 fully complete, now with a durable regression test.
+Next: Step 4 — load raw CSVs into DuckDB.
