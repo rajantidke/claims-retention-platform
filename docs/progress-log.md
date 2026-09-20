@@ -93,21 +93,7 @@ Kept as a debugging trail and a memory aid across sessions — not a polished do
 
 ---
 
-## Template for future entries
-
-## YYYY-MM-DD — Week N, Step X: <short description>
-
-**What was attempted**
-
-**What broke / issue faced**
-
-**Root cause**
-
-**Fix**
-
-**Status / what's next**
-
-## 2026-09-XX — Week 2, Step 3 (cont.): Formalized Sample 1/20 check as pytest
+## 2026-09-20 — Week 2, Step 3 (cont.): Formalized Sample 1/20 check as pytest
 
 - The Sample 1 vs Sample 20 verification was originally run as a disposable
   terminal one-off (see prior entry). The runbook explicitly calls for this
@@ -124,3 +110,19 @@ Kept as a debugging trail and a memory aid across sessions — not a polished do
 
 **Status:** Step 3 fully complete, now with a durable regression test.
 Next: Step 4 — load raw CSVs into DuckDB.
+
+
+---
+## Template for future entries
+
+## YYYY-MM-DD — Week N, Step X: <short description>
+
+**What was attempted**
+
+**What broke / issue faced**
+
+**Root cause**
+
+**Fix**
+
+**Status / what's next**
