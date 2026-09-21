@@ -1,20 +1,20 @@
-# Data - never commit. Synpuf is publicly available data and its size would make it impossible to commit
-data/
+# Data - never commit raw/interim data or database files. SynPUF is publicly
+# available but its size makes it impossible to commit. data/samples/ is the
+# deliberate exception (1k-person CI fixture) — it works because we exclude
+# specific subdirectories/patterns here rather than the whole data/ tree,
+# which would make it impossible for git to "see" samples/ at all.
+data/raw/
+data/interim/
 *.duckdb
 *.duckdb.wal
-*.csv
 *.zip
-!data/samples/
-!data/samples/*.csv
-# Exception for the tiny 1000 persons CI fixture
 
 # Secrets
 .env
 .env.*
 *.pem
 profiles.yml
-#Possible dtb profiles for the snowflake work in the future
-
+#Possible dbt profiles for the snowflake work in the future
 
 # Python
 .venv/
@@ -30,7 +30,6 @@ transform/logs
 mlruns/
 mlartifacts/
 .dagster/
-
 
 # OS / editor
 .DS_Store
