@@ -111,6 +111,40 @@ Kept as a debugging trail and a memory aid across sessions — not a polished do
 **Status:** Step 3 fully complete, now with a durable regression test.
 Next: Step 4 — load raw CSVs into DuckDB.
 
+## 2026-09-20 — Week 2, Step 4: Load raw CSVs into DuckDB
+
+**Build**
+- Wrote `ingest/load_raw.py`: loads all 8 raw CSVs into `data/claims.duckdb`
+  under a `raw` schema, zero transformation, `all_varchar=true` throughout
+  to protect leading-zero codes (NDC, ICD-9, county codes) from type
+  inference. Beneficiary years unioned with a `source_year` tag; carrier
+  segments A/B unioned without one (both already span all 3 years).
+- Walked through the script chunk-by-chunk before running rather than
+  running it blind, specifically to build real understanding of DuckDB's
+  `read_csv_auto`, schemas, and `UNION ALL BY NAME` — not just to get a
+  working pipeline.
+
+**Bugs caught on manual transcription (hand-typing from the walkthrough
+into VS Code, not copy-paste)**
+- 2010 beneficiary block copy-pasted with `source_year = 2009` (leftover
+  from the 2009 block above it) — a silent data bug, would not have thrown
+  an error, would have mislabeled every 2010 row as 2009 and left
+  `source_year = 2010` empty. Caught on review before running.
+- Carrier Sample B filename typed as `Sample_1b.csv` (lowercase) vs actual
+  file `Sample_1B.csv` (uppercase) — would have crashed with file-not-found
+  on Linux's case-sensitive filesystem. Caught on review before running.
+
+**Result — all row counts match codebook Table 2 (Sample 1) exactly**
+- beneficiary: 343,644 (116,352 + 114,538 + 112,754 across 2008/2009/2010)
+- inpatient: 66,773
+- outpatient: 790,790
+- pde: 5,552,421
+- carrier: 4,741,335 (A+B combined)
+- Runtime: ~1 minute end to end, faster than the worst-case `/mnt/c` I/O
+  estimate from Step 0.
+
+**Status:** Step 4 complete, all 8 raw tables loaded and row-count-verified.
+Next: Step 5 — build the 1k-person CI fixture from `data/samples/`.
 
 ---
 ## Template for future entries
