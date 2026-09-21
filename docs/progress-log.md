@@ -173,6 +173,50 @@ Next: Step 5 — build the 1k-person CI fixture from `data/samples/`.
 
 **Status:** Makefile and .gitignore fix complete. Proceeding to Step 5 —
 build the 1k-person CI fixture.
+
+## 2026-09-XX — Week 2, Step 5: 1k-person CI fixture
+
+**Build**
+- Wrote `ingest/build_fixture.py`: samples 1,000 distinct DESYNPUF_IDs via
+  reservoir sampling (fixed seed for reproducibility), registers them as a
+  DuckDB temp table, and joins against each of the 5 raw tables to extract
+  every row belonging to sampled beneficiaries, writing each to
+  `data/samples/*.csv`.
+- First attempt used `bernoulli` sampling, which failed: DuckDB's bernoulli
+  method only accepts a percentage, not a fixed row count. Switched to
+  `reservoir`, which supports exact counts directly.
+
+**Result**
+- 1,000 beneficiaries sampled; 2,945 / 656 / 7,532 / 45,798 / 44,241 rows
+  extracted for beneficiary / inpatient / outpatient / pde / carrier
+  respectively. Total fixture size: 28MB (carrier alone: 22MB, due to its
+  142-column width).
+
+**`.gitignore` — root cause of the samples-negation bug finally found and fixed**
+- Confirmed via an isolated test repo that git's ignore-matching short-circuits
+  at the directory level: once `data/` is excluded as a whole directory, no
+  negation pattern for anything inside it (`!data/samples/`, etc.) can ever
+  override that, regardless of ordering. This is documented git behavior,
+  not a bug in our pattern.
+- Fixed by removing the blanket `data/` exclude entirely and instead
+  excluding `data/raw/` and `data/interim/` specifically by name, plus
+  `*.duckdb`/`*.zip`. `data/samples/` is never mentioned in an exclude
+  pattern, so nothing needs to be negated.
+- Verified with `git check-ignore -v` against all three cases: samples CSV
+  (not ignored, correctly), raw CSV (ignored), and the .duckdb file (ignored).
+
+**Pre-commit tooling adjustments**
+- `check-added-large-files` default of 5MB was too low for the carrier
+  fixture (22MB, due to its wide 142-column schema) — raised to 30MB rather
+  than shrinking the beneficiary sample, since 1,000 people already gives
+  good edge-case coverage and 30MB still comfortably blocks any accidental
+  full-size raw file commit.
+- `detect-secrets` took 3-5 minutes scanning the large CSVs' cell contents
+  for entropy on first commit — added `exclude: '^data/'` to the hook config
+  so future commits touching `data/samples/` don't pay this cost repeatedly.
+  No actual secrets risk in claims-code data, so excluding it is safe.
+
+**Status:** Step 5 complete. Next: Step 6 — the 12-question EDA.
 ---
 ## Template for future entries
 
