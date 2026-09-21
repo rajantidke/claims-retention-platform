@@ -146,6 +146,33 @@ into VS Code, not copy-paste)**
 **Status:** Step 4 complete, all 8 raw tables loaded and row-count-verified.
 Next: Step 5 — build the 1k-person CI fixture from `data/samples/`.
 
+## 2026-09-21 — Week 2, Step 4 (cont.): Makefile added; .gitignore negation fixed
+
+**Makefile**
+- Runbook's Step 4 includes a Makefile (`setup`, `download`, `ingest`, `test`,
+  `clean` targets). Added it since CI (Week 8) and the fixture step both assume
+  `make` targets exist.
+- Adjusted `download` target: runbook's version shells to
+  `python -m ingest.download`, but that script was never written (manual
+  download was the deliberate call in Step 3). `download` is now a stub
+  that prints where the files actually came from, and `ingest` no longer
+  depends on it.
+- Verified `make test` runs the pytest suite correctly; `make ingest` rebuilds
+  the DuckDB tables cleanly via `CREATE OR REPLACE`.
+
+**.gitignore — samples negation bug fixed (flagged since Step 1)**
+- `!data/samples/*.csv` was present since Step 1 but non-functional: `data/`
+  excluded the whole directory before git would evaluate the negation, and
+  `*.csv` appearing *after* the negation lines re-excluded everything anyway
+  (later rules win in .gitignore precedence).
+- Fixed by adding `!data/samples/` (un-excludes the directory itself) and
+  reordering so both negations come after all broad exclude patterns, not
+  before.
+- Verification pending: will confirm with `git check-ignore -v` once sample
+  CSVs exist (Step 5).
+
+**Status:** Makefile and .gitignore fix complete. Proceeding to Step 5 —
+build the 1k-person CI fixture.
 ---
 ## Template for future entries
 

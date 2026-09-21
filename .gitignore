@@ -1,9 +1,10 @@
-# Data - never commit. Synpuf is pulicly available data and its size would make it impossible to commit
+# Data - never commit. Synpuf is publicly available data and its size would make it impossible to commit
 data/
 *.duckdb
 *.duckdb.wal
 *.csv
 *.zip
+!data/samples/
 !data/samples/*.csv
 # Exception for the tiny 1000 persons CI fixture
 
