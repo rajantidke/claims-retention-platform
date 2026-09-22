@@ -174,7 +174,7 @@ Next: Step 5 — build the 1k-person CI fixture from `data/samples/`.
 **Status:** Makefile and .gitignore fix complete. Proceeding to Step 5 —
 build the 1k-person CI fixture.
 
-## 2026-09-XX — Week 2, Step 5: 1k-person CI fixture
+## 2026-09-21 — Week 2, Step 5: 1k-person CI fixture
 
 **Build**
 - Wrote `ingest/build_fixture.py`: samples 1,000 distinct DESYNPUF_IDs via
@@ -217,6 +217,68 @@ build the 1k-person CI fixture.
   No actual secrets risk in claims-code data, so excluding it is safe.
 
 **Status:** Step 5 complete. Next: Step 6 — the 12-question EDA.
+---
+
+## 2026-09-21 — Week 2, Step 6: The 12 crucial question EDA (interim checkpoint)
+
+**Build**
+- Built `notebooks/01_raw_profiling.ipynb` — question-by-question structure,
+  each chart displayed inline after its analysis(notebook is scratch; `docs/data_quality_report.md` is the real   deliverable, not yet written).
+- Confirmed JupyterLab kernel correctly resolves to this project's `.venv`
+  (`which jupyter` → `.venv/bin/jupyter`; `python3` kernel auto-registered
+  from the venv install) before starting.
+
+**Status: all 12 EDA questions answered, all 4 required charts built.**
+
+**Key findings (full detail in the notebook) :**
+
+1. **Row counts, beneficiary overlap, orphan claims — all clean.** Row
+   counts match codebook Table 2 exactly; 0 orphan claims across all 4
+   claims tables; Sample 1 (not Sample 20) reconfirmed a third time.
+2. **Severe right-censoring from ~Jan 2010, worsening through Nov 2010** —
+   all 4 claims tables show a 70-80% volume drop from their 2008-2009
+   plateau by the final month. Diagnosed as a claims-lag/reporting-delay
+   artifact, not real discontinuation. Flagged as the most consequential
+   single finding — has direct design implications for persistence/
+   adherence logic in later weeks (index dates and outcome windows near
+   the end of 2010 will need explicit censoring treatment).
+3. **Individual PDE product codes (`PROD_SRVC_ID`) do not reliably track
+   real drug identity.** Format is preserved (valid 11-digit NDC structure,
+   leading zeros intact) but individual-code fill volume is nearly flat
+   (top code = 0.0037% of all fills) and a manual 39-fill sequence read for
+   one beneficiary showed zero repeated product codes. 5-digit labeler
+   (manufacturer) code, by contrast, shows real concentration (top labeler
+   = 11% of all fills). Refill *timing/cadence* looks realistic; product
+   *identity* does not. Directly affects feasibility of any planned
+   NDC-to-drug-class therapy cohort definition — likely needs a coarser
+   (labeler-level) or empirical (this-dataset's-own-rankings) approach
+   instead of a real-world crosswalk.
+4. **Chronic condition prevalence runs 1.6-2.4x higher than real Medicare**
+   across all 11 flags, systematically (not random) — independently
+   reproduced the codebook's own published figures to the decimal, then
+   confirmed against real-Medicare reference rates with a chart.
+5. **Correlation-degradation pattern found via 3 variable pairs, with a
+   coherent explanatory mechanism**: age↔chronic-condition-count fell to
+   r=0.086 (essentially broken, with a concrete non-monotonic dip at ages
+   60-69); inpatient-admissions↔IP-reimbursement held at r=0.643
+   (mechanical/claim-level relationship, survives synthesis); chronic-
+   condition-count↔total-reimbursement landed at r=0.553 (real clinical
+   signal, partially preserved). Pattern: relationships internal to a
+   single claim survive; relationships requiring preserved structure
+   *across* independently-synthesized parts of a record degrade.
+6. **14.5% of beneficiaries have zero PDE fills across all 3 years** —
+   relevant to Module A's funnel/activation framing.
+7. Deviated from the runbook's suggested Q12 third pair (diabetes flag vs.
+   antidiabetic fills) — not answerable given finding #3 above — substituted
+   chronic-condition-count vs. total-reimbursement instead, with the
+   substitution explicitly justified in the notebook.
+
+**Status:** Steps 1-6 all complete except the written report (Step 7).
+Evaluating the findings to reshape strategy before proceeding, in case any
+of the above (especially #2 right-censoring and #3 product-code
+unreliability) changes sequencing or scope for Weeks 3+. Report assembly
+resumes after that check-in.
+
 ---
 ## Template for future entries
 
