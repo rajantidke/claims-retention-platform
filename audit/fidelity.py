@@ -53,6 +53,7 @@ def gate2_labeler_concentration_null(con):
     pde_labelers = con.execute("""
         SELECT DESYNPUF_ID, SUBSTRING(PROD_SRVC_ID, 1, 5) AS labeler
         FROM raw.pde
+        ORDER BY DESYNPUF_ID, PDE_ID
     """).pl()
 
     real_concentration = (
@@ -102,6 +103,7 @@ def gate3_90day_share_null(con):
     pde_days_supply = con.execute("""
         SELECT DESYNPUF_ID, CAST(DAYS_SUPLY_NUM AS INTEGER) AS days_supply
         FROM raw.pde
+        ORDER BY DESYNPUF_ID, PDE_ID
     """).pl()
     pde_days_supply = pde_days_supply.with_columns((pl.col("days_supply") == 90).alias("is_90day"))
 
@@ -219,13 +221,13 @@ def gate6_test1_days_supply_timing(con):
     within-person shuffle null."""
     clean_pde = (
         con.execute("""
-        SELECT DESYNPUF_ID, CAST(STRPTIME(SRVC_DT, '%Y%m%d') AS DATE) AS fill_date,
+        SELECT DESYNPUF_ID, PDE_ID, CAST(STRPTIME(SRVC_DT, '%Y%m%d') AS DATE) AS fill_date,
                CAST(DAYS_SUPLY_NUM AS INTEGER) AS days_supply
         FROM raw.pde
         WHERE STRPTIME(SRVC_DT, '%Y%m%d') < DATE '2010-02-01'
     """)
         .pl()
-        .sort(["DESYNPUF_ID", "fill_date"])
+        .sort(["DESYNPUF_ID", "fill_date", "PDE_ID"])
     )
 
     fill_counts_clean = clean_pde.group_by("DESYNPUF_ID").len().rename({"len": "n_fills"})
@@ -277,9 +279,10 @@ def gate6_test2_timing_structure(clean_pde):
     rng = np.random.default_rng(SEED)
 
     clean_fill_dates = (
-        clean_pde.group_by("DESYNPUF_ID")
+        clean_pde.group_by("DESYNPUF_ID", maintain_order=True)
         .agg(pl.col("fill_date").sort().alias("dates"))
         .filter(pl.col("dates").list.len() >= 3)
+        .sort("DESYNPUF_ID")
     )
 
     def coeff_of_var(gaps):
