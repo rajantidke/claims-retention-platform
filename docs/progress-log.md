@@ -280,9 +280,115 @@ unreliability) changes sequencing or scope for Weeks 3+. Report assembly
 resumes after that check-in.
 
 ---
+
+## 2026-09-23 — Week 2, Steps 6 and 7: Strategy review, six fidelity gates, spec v2, fidelity_audit.md
+
+**Strategy review caught two real analysis errors before anything was
+written down permanently**
+- Q12 Pair 1 (age vs. chronic condition count) was misread as "broken
+  by synthesis." The 60-69 age dip is real Medicare structure — under-65
+  beneficiaries qualify via disability/ESRD and are systematically sicker
+  than people who "aged in" normally at 65. Recomputed on 65+ only using
+  Spearman: 0.159, clean monotonic increase across decade buckets
+  (1.70 → 2.23 → 2.67 → 2.80), no dip. Weaker in magnitude than the
+  qualitative trend suggests, but genuinely real and no longer "broken."
+- Q12 Pair 2 (inpatient admissions vs. IP reimbursement) had a real bug:
+  admissions counted across all 3 years, joined to 2008-only
+  reimbursement. Fixed to restrict both sides to 2008. Correlation rose
+  from a buggy 0.643 to a corrected 0.828, and the average cost per
+  admission became clinically plausible ($8,503 vs. the old, implausible
+  $1,994) — strengthens rather than weakens the original mechanism-based
+  explanation (claim-internal relationships survive synthesis intact).
+- The "claims lag" explanation for the 2010 decline was also flagged as
+  wrong — real claims lag only softens the last few months of a dataset,
+  it doesn't start in January and deepen for eleven months. Confirmed via
+  Gate 4 below.
+
+**Six fidelity gates built in the notebook, each with a decision
+pre-committed for every possible outcome before running:**
+1. Population-wide refill-pair check: 0.06% of (beneficiary, product)
+   pairs ever repeat; 17.78% at the labeler level. Confirms the Q9 finding
+   generalizes across the whole file, not just one beneficiary.
+2. Labeler concentration vs. shuffle null: real and shuffled distributions
+   statistically indistinguishable (mean 0.2162 vs 0.2158). No real
+   person-level manufacturer-clustering signal exists.
+3. 90-day-share vs. shuffle null: real but modest signal (KS=0.051,
+   p=4.22e-113; means 0.1162 vs 0.1073). Statistically real, practically
+   small.
+4. Monthly plateau threshold: Feb 2010 already 15% below the 2009 plateau
+   (1.349 vs 1.418 threshold); Dec 2010 at 25% of plateau. Decisively
+   rules out claims lag as the explanation — sets Feb 2010 as the hard
+   cutoff for the clean analysis window.
+5. FDA NDC Directory lookup on top 5 labeler codes by fill volume: zero
+   matches. Two labelers further down the ranking (55289, 51079) are real
+   companies, one a repackager (PD-Rx) — wording softened per review to
+   note the directory only covers currently-marketed products, so this is
+   supporting evidence, not conclusive; Gate 2 is the stronger proof.
+6. Timing structure, three sub-tests, restricted to the clean (pre-Feb 2010) window:
+   - Test 1: days-supply vs. next-fill-gap — real diff 1.0 day, shuffled
+     diff 2.0 days. Fails; PDC unreliable as a metric.
+   - Test 2: fill-count-preserving date redraw — real vs. redrawn
+     statistically identical on CV of gaps, 60+-day-gap share, and
+     resume-within-90-days rate. Fails, decisively — a long gap in this
+     file is arithmetic (fill count ÷ window), not a real behavioral stop.
+   - Test 3: file connectivity (fill count vs. chronic conditions,
+     ρ=0.240; vs. admissions, ρ=0.120). Passes on the stronger correlation
+     — PDE is meaningfully connected to the rest of the record, plasmode
+     simulation can use real linked covariates.
+
+**Verdict from strategy review: project confirmed viable.** The four
+"dataset" findings (drug identity, labeler clustering, the drug-class
+comparator, and the withdrawn 90-day design) all trace to one mechanism —
+claim-level attributes are synthesized nearly independently of the person
+— not a climbing rate of unrelated problems. Spec patched to v2 (v1
+archived) as a result:
+- Module A: primary metric moved from PDC to monthly-active engagement
+  (any fill that month); PDC still computed, reported as unreliable.
+  Utilization mart promoted from optional to core.
+- Module C: drug-class active-comparator design replaced with a plasmode
+  simulation on a real hospitalization cohort (real covariates, washout,
+  index date, Table 1; simulated treatment/outcome with known truth;
+  200 reps/scenario; includes a hidden-confounder scenario to validate
+  the E-value against a known answer).
+- Module D: snapshot-based temporal split (train Jan 1 2009, test Jul 1
+  2009), non-overlapping labels by construction; Jul 2010 snapshot
+  reserved to demonstrate the drift monitor firing.
+- Module E: fixed so claims and clinical definitions are measured on the
+  same Synthea patients.
+- Analysis index window: beneficiaries with a relevant event ~July 2008 –
+  July 2009, outcomes measured before the Feb 2010 data-quality cutoff.
+
+
+**Gate code and report written up as permanent deliverables**
+- All 6 gates ported from notebook cells into `audit/fidelity.py`
+  (one function per gate/sub-test, a `main()` that runs and prints all of
+  them), with a `make audit` target added to the Makefile. Verified the
+  module reproduces every notebook number exactly (Gate 6 Test 2's numbers
+  differ by ~0.1% between runs due to randomization order, not a
+  discrepancy — same conclusion either way).
+- Wrote `docs/fidelity_audit.md`: the full writeup, in order (project →
+  data → EDA findings → the six gates → constraints → what changed in the
+  spec as a result). Built section by section over several passes to get
+  the tone right — plain, first-person, no unnecessary jargon-heavy
+  phrasing — rather than reading like a compliance document.
+- Also produced `docs/progress-log.md` companion note: a proposed
+  clustering-based EDA extension (k-means on beneficiary/claims data
+  against condition flags and ICD codes) was considered mid-report-writing
+  and deliberately deferred rather than added — the gates already answer
+  the relevant questions with sharper, hypothesis-driven tests, and
+  clustering would be a step backward in rigor for this specific purpose.
+
+**Status: Week 2 is complete.** Repo scaffolded, data downloaded/verified/
+loaded, CI fixture built, 12-question EDA answered, 2 real analysis
+mistakes caught and fixed, 6 independently-designed fidelity gates run
+and ported into a reusable module, project viability confirmed, spec
+patched to v2, and the full findings written up in `docs/fidelity_audit.md`.
+Next: Week 3/4 — dbt initialization and staging models.
+
+---
 ## Template for future entries
 
-## YYYY-MM-DD — Week N, Step X: <short description>
+## YYYY-MM-DD — Week N, Step X: < short description>
 
 **What was attempted**
 
