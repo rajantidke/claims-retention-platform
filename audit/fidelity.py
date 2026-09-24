@@ -331,7 +331,7 @@ def gate6_test2_timing_structure(clean_pde):
 
 def gate6_test3_file_connectivity(con):
     """Spearman correlation of 2008 fill count with chronic-condition
-    count and with 2008 inpatient admissions — tests whether PDE is
+    count and with 2008 inpatient admissions: tests whether PDE is
     meaningfully connected to the rest of the beneficiary record."""
     condition_cols = [
         "SP_ALZHDMTA",
@@ -374,6 +374,67 @@ def gate6_test3_file_connectivity(con):
         "spearman_conditions": spearman_conditions,
         "spearman_admissions": spearman_admissions,
         "passes_threshold": spearman_conditions >= 0.2,
+    }
+
+
+def part_d_corrections(con):
+    """Corrected Q12 Pair 1 (65+, Spearman) and Pair 2 (year-matched).
+
+    Both were originally computed with errors, but some bugs were caugh on review.
+    Pair 1 mixed under-65 disability/ESRD beneficiaries into an age-vs-
+    comorbidity check where they don't belong; Pair 2 compared 3 years of
+    admissions against only 1 year of reimbursement. See fidelity_audit.md
+    Part D for the full narrative.
+    """
+    condition_cols = [
+        "SP_ALZHDMTA",
+        "SP_CHF",
+        "SP_CHRNKIDN",
+        "SP_CNCR",
+        "SP_COPD",
+        "SP_DEPRESSN",
+        "SP_DIABETES",
+        "SP_ISCHMCHT",
+        "SP_OSTEOPRS",
+        "SP_RA_OA",
+        "SP_STRKETIA",
+    ]
+    sum_expr = " + ".join([f"CASE WHEN {c} = '1' THEN 1 ELSE 0 END" for c in condition_cols])
+
+    # Pair 1: age (65+) vs. chronic condition count, Spearman
+    age_vs_conditions = con.execute(f"""
+        SELECT
+            DATE_DIFF('year', CAST(STRPTIME(BENE_BIRTH_DT, '%Y%m%d') AS DATE), DATE '2008-01-01') AS age,
+            ({sum_expr}) AS n_conditions
+        FROM raw.beneficiary
+        WHERE source_year = 2008
+    """).pl()
+    age_65plus = age_vs_conditions.filter(pl.col("age") >= 65)
+    pair1_spearman_65plus = age_65plus.select(
+        pl.corr("age", "n_conditions", method="spearman")
+    ).item()
+
+    # Pair 2: 2008 admissions vs. 2008 IP reimbursement corrected
+    admits_vs_reimb = con.execute("""
+        SELECT
+            b.DESYNPUF_ID,
+            COUNT(i.CLM_ID) AS n_admissions_2008,
+            MAX(TRY_CAST(b.MEDREIMB_IP AS DOUBLE)) AS total_ip_reimb
+        FROM raw.beneficiary b
+        LEFT JOIN raw.inpatient i ON b.DESYNPUF_ID = i.DESYNPUF_ID
+            AND STRPTIME(i.CLM_FROM_DT, '%Y%m%d') < DATE '2009-01-01'
+        WHERE b.source_year = 2008
+        GROUP BY b.DESYNPUF_ID
+    """).pl()
+    pair2_corr_2008 = admits_vs_reimb.select(pl.corr("n_admissions_2008", "total_ip_reimb")).item()
+    pair2_cost_per_admission = admits_vs_reimb.filter(pl.col("n_admissions_2008") == 1)[
+        "total_ip_reimb"
+    ].mean()
+
+    return {
+        "pair1_spearman_65plus": pair1_spearman_65plus,
+        "pair2_corr_2008": pair2_corr_2008,
+        "pair2_cost_per_admission": pair2_cost_per_admission,
     }
 
 
@@ -475,6 +536,21 @@ def main():
     print(f"Spearman rho (fill count, chronic conditions): {g6t3['spearman_conditions']:.3f}")
     print(f"Spearman rho (fill count, inpatient admissions): {g6t3['spearman_admissions']:.3f}")
     print(f"Threshold 0.2: {'PASS' if g6t3['passes_threshold'] else 'FAIL'}")
+
+    # Part D corrections print block
+    print("\n" + "=" * 60)
+    print("PART D CORRECTIONS: Q12 Pair 1 (65+, Spearman) and Pair 2 (year-matched)")
+    print("=" * 60)
+    pd_corr = part_d_corrections(con)
+    print(
+        f"Pair 1: Spearman rho (age 65+, chronic conditions): {pd_corr['pair1_spearman_65plus']:.3f}"
+    )
+    print(
+        f"Pair 2: Corrected correlation (2008 admissions, 2008 IP reimbursement): {pd_corr['pair2_corr_2008']:.3f}"
+    )
+    print(
+        f"Pair 2: Average cost for exactly 1 admission: ${pd_corr['pair2_cost_per_admission']:,.2f}"
+    )
 
     print("\n" + "=" * 60)
     print("FIDELITY AUDIT COMPLETE")
