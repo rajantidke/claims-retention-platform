@@ -1,4 +1,4 @@
-.PHONY: setup download ingest test clean
+.PHONY: setup download ingest audit test clean
 
 setup:
 	uv venv && uv pip install -e ".[dev]" && pre-commit install
@@ -9,6 +9,9 @@ download:
 
 ingest:
 	python -m ingest.load_raw
+
+audit:
+	python -m audit.fidelity
 
 test:
 	pytest -q
