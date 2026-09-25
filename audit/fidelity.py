@@ -7,10 +7,14 @@ later modules. See docs/fidelity_audit.md for full narrative context:
 this module produces the numbers that document cites.
 """
 
+# Global imports
 import duckdb
 import numpy as np
 import polars as pl
 from scipy import stats
+import matplotlib.pyplot as plt
+import json
+from pathlib import Path
 
 DB_PATH = "data/claims.duckdb"
 SEED = 7  # Like always, 007 is unavailable.
@@ -47,7 +51,7 @@ def gate1_refill_pairs(con):
     }
 
 
-def gate2_labeler_concentration_null(con):
+def gate2_labeler_concentration_null(con, figures_dir=None):
     """Is a beneficiary's tendency to cluster fills around one labeler a
     real personal trait, or indistinguishable from random chance?"""
     pde_labelers = con.execute("""
@@ -88,6 +92,32 @@ def gate2_labeler_concentration_null(con):
             (pl.col("top_labeler_fills") / pl.col("total_fills")).alias("top_labeler_share")
         )
     )
+    if figures_dir:
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.hist(
+            real_concentration["top_labeler_share"],
+            bins=50,
+            alpha=0.5,
+            label="Real data",
+            color="steelblue",
+            density=True,
+        )
+        ax.hist(
+            shuffled_concentration["top_labeler_share"],
+            bins=50,
+            alpha=0.5,
+            label="Shuffled null",
+            color="darkorange",
+            density=True,
+        )
+        ax.set_xlabel("Top-labeler share of fills (per beneficiary)")
+        ax.set_ylabel("Density")
+        ax.set_title("Gate 2: Real vs. Shuffled-Null Labeler Concentration")
+        ax.legend()
+        ax.grid(alpha=0.3)
+        plt.tight_layout()
+        plt.savefig(f"{figures_dir}/gate2_labeler_concentration_null_test.png", dpi=150)
+        plt.close(fig)
 
     return {
         "real_mean": real_concentration["top_labeler_share"].mean(),
@@ -97,7 +127,7 @@ def gate2_labeler_concentration_null(con):
     }
 
 
-def gate3_90day_share_null(con):
+def gate3_90day_share_null(con, figures_dir=None):
     """Is a beneficiary's tendency toward 90-day fills, a real personal
     trait, or indistinguishable from random chance?"""
     pde_days_supply = con.execute("""
@@ -126,6 +156,32 @@ def gate3_90day_share_null(con):
         real_90day_share["share_90day"].to_numpy(),
         shuffled_90day_share["share_90day"].to_numpy(),
     )
+    if figures_dir:
+        fig, ax = plt.subplots(figsize=(10, 6))
+        ax.hist(
+            real_90day_share["share_90day"],
+            bins=50,
+            alpha=0.5,
+            label="Real data",
+            color="steelblue",
+            density=True,
+        )
+        ax.hist(
+            shuffled_90day_share["share_90day"],
+            bins=50,
+            alpha=0.5,
+            label="Shuffled null",
+            color="darkorange",
+            density=True,
+        )
+        ax.set_xlabel("90-day-supply share of fills (per beneficiary)")
+        ax.set_ylabel("Density")
+        ax.set_title("Gate 3: Real vs. Shuffled-Null 90-Day-Supply Concentration")
+        ax.legend()
+        ax.grid(alpha=0.3)
+        plt.tight_layout()
+        plt.savefig(f"{figures_dir}/gate3_90day_share_null_test.png", dpi=150)
+        plt.close(fig)
 
     return {
         "real_mean": real_90day_share["share_90day"].mean(),
@@ -271,7 +327,7 @@ def gate6_test1_days_supply_timing(con):
     }, clean_pde
 
 
-def gate6_test2_timing_structure(clean_pde):
+def gate6_test2_timing_structure(clean_pde, figures_dir=None):
     """For each beneficiary, redraw fill dates uniformly within their own
     observation window (keeping fill count and window fixed). Compare real
     vs. redrawn on coefficient of variation of gaps, share with a 60+ day
@@ -318,14 +374,52 @@ def gate6_test2_timing_structure(clean_pde):
             rfirst60_idx = np.where(rgaps >= 60)[0][0]
             redrawn_resume90.append(rgaps[rfirst60_idx] <= 90)
 
+    real_any60_pct = 100 * np.mean(real_any60)
+    redrawn_any60_pct = 100 * np.mean(redrawn_any60)
+    real_resume90_pct = 100 * np.mean(real_resume90)
+    redrawn_resume90_pct = 100 * np.mean(redrawn_resume90)
+
+    if figures_dir:
+        fig, axes = plt.subplots(1, 3, figsize=(16, 5))
+
+        axes[0].hist(real_cvs, bins=50, alpha=0.5, label="Real", color="steelblue", density=True)
+        axes[0].hist(
+            redrawn_cvs, bins=50, alpha=0.5, label="Redrawn", color="darkorange", density=True
+        )
+        axes[0].set_xlabel("Coefficient of variation of gaps")
+        axes[0].set_ylabel("Density")
+        axes[0].set_title("CV of gaps")
+        axes[0].legend()
+
+        axes[1].bar(
+            ["Real", "Redrawn"],
+            [real_any60_pct, redrawn_any60_pct],
+            color=["steelblue", "darkorange"],
+        )
+        axes[1].set_ylabel("% of beneficiaries")
+        axes[1].set_title("Any 60+ day gap")
+
+        axes[2].bar(
+            ["Real", "Redrawn"],
+            [real_resume90_pct, redrawn_resume90_pct],
+            color=["steelblue", "darkorange"],
+        )
+        axes[2].set_ylabel("% (of those with a 60+ day gap)")
+        axes[2].set_title("Resume within 90 days")
+
+        fig.suptitle("Gate 6, Test 2: Real vs. Redrawn Timing Structure")
+        plt.tight_layout()
+        plt.savefig(f"{figures_dir}/gate6_test2_timing_structure.png", dpi=150)
+        plt.close(fig)
+
     return {
         "n_tested": len(real_cvs),
         "real_cv_median": np.nanmedian(real_cvs),
         "redrawn_cv_median": np.nanmedian(redrawn_cvs),
-        "real_any60_pct": 100 * np.mean(real_any60),
-        "redrawn_any60_pct": 100 * np.mean(redrawn_any60),
-        "real_resume90_pct": 100 * np.mean(real_resume90),
-        "redrawn_resume90_pct": 100 * np.mean(redrawn_resume90),
+        "real_any60_pct": real_any60_pct,
+        "redrawn_any60_pct": redrawn_any60_pct,
+        "real_resume90_pct": real_resume90_pct,
+        "redrawn_resume90_pct": redrawn_resume90_pct,
     }
 
 
@@ -440,12 +534,14 @@ def part_d_corrections(con):
 
 def main():
     con = duckdb.connect(DB_PATH)
+    results = {}
 
     # Gate 1 print block
     print("=" * 60)
     print("GATE 1: Population-wide refill-pair check")
     print("=" * 60)
     g1 = gate1_refill_pairs(con)
+    results["gate1"] = g1
     print("Product-code level:")
     print(f"  Total (beneficiary, product) pairs: {g1['product_total_pairs']:,}")
     print(
@@ -463,7 +559,8 @@ def main():
     print("\n" + "=" * 60)
     print("GATE 2: Labeler concentration vs. shuffle null")
     print("=" * 60)
-    g2 = gate2_labeler_concentration_null(con)
+    g2 = gate2_labeler_concentration_null(con, figures_dir="reports/figures")
+    results["gate2"] = g2
     print(f"Real data     — mean: {g2['real_mean']:.4f}, median: {g2['real_median']:.4f}")
     print(f"Shuffled null — mean: {g2['shuffled_mean']:.4f}, median: {g2['shuffled_median']:.4f}")
 
@@ -471,7 +568,8 @@ def main():
     print("\n" + "=" * 60)
     print("GATE 3: 90-day-supply share vs. shuffle null")
     print("=" * 60)
-    g3 = gate3_90day_share_null(con)
+    g3 = gate3_90day_share_null(con, figures_dir="reports/figures")
+    results["gate3"] = g3
     print(f"Real data     — mean: {g3['real_mean']:.4f}, std: {g3['real_std']:.4f}")
     print(f"Shuffled null — mean: {g3['shuffled_mean']:.4f}, std: {g3['shuffled_std']:.4f}")
     print(f"KS statistic: {g3['ks_stat']:.4f}, p-value: {g3['ks_pvalue']:.2e}")
@@ -481,6 +579,7 @@ def main():
     print("GATE 4: Fills-per-enrolled-beneficiary monthly plateau threshold")
     print("=" * 60)
     g4 = gate4_monthly_plateau_threshold(con)
+    results["gate4"] = g4
     print(f"2009 plateau (mean fills/enrolled): {g4['plateau_2009']:.3f}")
     print(f"90% threshold: {g4['threshold']:.3f}")
     print(
@@ -497,6 +596,7 @@ def main():
     print("GATE 5: FDA NDC Directory lookup (manual check, recorded here)")
     print("=" * 60)
     g5 = gate5_ndc_directory_lookup()
+    results["gate5"] = g5
     for labeler, info in g5.items():
         status = f"FOUND: {info['company']}" if info["found"] else "NOT FOUND"
         print(f"  {labeler} (rank #{info['fill_rank']}, {info['fills']:,} fills): {status}")
@@ -506,6 +606,7 @@ def main():
     print("GATE 6, TEST 1: Days-supply -> next-fill-gap relationship")
     print("=" * 60)
     g6t1, clean_pde = gate6_test1_days_supply_timing(con)
+    results["gate6_test1"] = g6t1
     print(
         f"Real:     30-day median gap {g6t1['real_30_median']:.1f}d, "
         f"90-day median gap {g6t1['real_90_median']:.1f}d, diff {g6t1['real_diff']:.1f}d"
@@ -516,7 +617,8 @@ def main():
     print("\n" + "=" * 60)
     print("GATE 6, TEST 2: Timing structure beyond fill intensity")
     print("=" * 60)
-    g6t2 = gate6_test2_timing_structure(clean_pde)
+    g6t2 = gate6_test2_timing_structure(clean_pde, figures_dir="reports/figures")
+    results["gate6_test2"] = g6t2
     print(f"Beneficiaries tested: {g6t2['n_tested']:,}")
     print(
         f"CV of gaps       — real: {g6t2['real_cv_median']:.3f}, redrawn: {g6t2['redrawn_cv_median']:.3f}"
@@ -533,6 +635,7 @@ def main():
     print("GATE 6, TEST 3: File connectivity")
     print("=" * 60)
     g6t3 = gate6_test3_file_connectivity(con)
+    results["gate6_test3"] = g6t3
     print(f"Spearman rho (fill count, chronic conditions): {g6t3['spearman_conditions']:.3f}")
     print(f"Spearman rho (fill count, inpatient admissions): {g6t3['spearman_admissions']:.3f}")
     print(f"Threshold 0.2: {'PASS' if g6t3['passes_threshold'] else 'FAIL'}")
@@ -542,6 +645,7 @@ def main():
     print("PART D CORRECTIONS: Q12 Pair 1 (65+, Spearman) and Pair 2 (year-matched)")
     print("=" * 60)
     pd_corr = part_d_corrections(con)
+    results["part_d_corrections"] = pd_corr
     print(
         f"Pair 1: Spearman rho (age 65+, chronic conditions): {pd_corr['pair1_spearman_65plus']:.3f}"
     )
@@ -552,9 +656,14 @@ def main():
         f"Pair 2: Average cost for exactly 1 admission: ${pd_corr['pair2_cost_per_admission']:,.2f}"
     )
 
+    # Write consolidated results for diffing against the report / CI checks
+    Path("reports").mkdir(exist_ok=True)
+    Path("reports/audit_results.json").write_text(json.dumps(results, indent=2, default=str))
+
     print("\n" + "=" * 60)
     print("FIDELITY AUDIT COMPLETE")
     print("=" * 60)
+    print("Results written to reports/audit_results.json")
 
     con.close()
 

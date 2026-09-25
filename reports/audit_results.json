@@ -1,0 +1,95 @@
+{
+  "gate1": {
+    "product_total_pairs": 5549151,
+    "product_pairs_with_refill": 3263,
+    "product_pct_refill": 0.05880178787710048,
+    "labeler_total_pairs": 4037386,
+    "labeler_pairs_with_refill": 717647,
+    "labeler_pct_refill": 17.77504058318922
+  },
+  "gate2": {
+    "real_mean": 0.2161860525800268,
+    "real_median": 0.13333333333333333,
+    "shuffled_mean": 0.21553918410188908,
+    "shuffled_median": 0.13274336283185842
+  },
+  "gate3": {
+    "real_mean": 0.11620044026964474,
+    "shuffled_mean": 0.10793515924559703,
+    "real_std": 0.12980800270811071,
+    "shuffled_std": 0.11904712032457854,
+    "ks_stat": 0.04934798770318871,
+    "ks_pvalue": 9.085359834016499e-106
+  },
+  "gate4": {
+    "plateau_2009": 1.57550041616465,
+    "threshold": 1.417950374548185,
+    "first_breach_month": "2010-02-01 00:00:00",
+    "first_breach_value": 1.348537524167657,
+    "dec_2010_value": 0.3887933022331802
+  },
+  "gate5": {
+    "58016": {
+      "fill_rank": 1,
+      "fills": 611243,
+      "found": false
+    },
+    "54868": {
+      "fill_rank": 2,
+      "fills": 164072,
+      "found": false
+    },
+    "36987": {
+      "fill_rank": 3,
+      "fills": 121940,
+      "found": false
+    },
+    "00247": {
+      "fill_rank": 4,
+      "fills": 105153,
+      "found": false
+    },
+    "61392": {
+      "fill_rank": 5,
+      "fills": 97719,
+      "found": false
+    },
+    "55289": {
+      "fill_rank": 8,
+      "fills": 42970,
+      "found": true,
+      "company": "PD-Rx Pharmaceuticals, Inc. (repackager)"
+    },
+    "51079": {
+      "fill_rank": 10,
+      "fills": 41432,
+      "found": true,
+      "company": "Mylan Institutional Inc."
+    }
+  },
+  "gate6_test1": {
+    "real_30_median": 47.0,
+    "real_90_median": 48.0,
+    "real_diff": 1.0,
+    "shuf_diff": 2.0
+  },
+  "gate6_test2": {
+    "n_tested": 81887,
+    "real_cv_median": 0.9372374552608228,
+    "redrawn_cv_median": 0.9371864604822223,
+    "real_any60_pct": 51.48802618242212,
+    "redrawn_any60_pct": 51.17173666149694,
+    "real_resume90_pct": 60.28651392248945,
+    "redrawn_resume90_pct": 60.41333556069971
+  },
+  "gate6_test3": {
+    "spearman_conditions": 0.23970392063103396,
+    "spearman_admissions": 0.12016706011489452,
+    "passes_threshold": true
+  },
+  "part_d_corrections": {
+    "pair1_spearman_65plus": 0.15919537689115595,
+    "pair2_corr_2008": 0.8282899550570683,
+    "pair2_cost_per_admission": 8502.997413114384
+  }
+}
