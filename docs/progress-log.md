@@ -445,6 +445,42 @@ carried-over dbt-initialization portion. Next: Week 4: staging
 models, seeds, and intermediate models.
 
 ---
+## 2026-09-27 — Week 4, Part 2: Staging models — grain discovery on inpatient/outpatient
+
+**Build**
+- `stg_beneficiary`, `stg_pde` built cleanly on first pass (after two dbt
+  test-syntax deprecation fixes, `accepted_values` and `equal_rowcount`
+  both needed arguments nested under a new `arguments:` key in dbt 1.12).
+- `stg_inpatient`/`stg_outpatient`: initial `unique` test on `claim_id`
+  failed, 68 duplicates in inpatient, 10,975 in outpatient.
+
+**Investigation before fixing (per runbook: "don't work around it, record the actual grain")**
+- Queried the duplicate `claim_id`s directly: every one had exactly 2 rows,
+  split across `SEGMENT` values 1 and 2 — not a data error, a real second
+  grain dimension.
+- Checked the codebook before implementing anything: `SEGMENT` represents
+  CMS's claim-line-segment mechanism (one segment per 45 revenue lines),
+  but the codebook also states it was capped at 2 and suppressed as part
+  of disclosure treatment, same category of caution as the other fields
+  the fidelity audit already flagged (product codes, days-supply, chronic
+  conditions). Worth checking before writing the fix, not after.
+
+**Fix**
+- True grain is `(claim_id, segment)`, not `claim_id` alone. Added
+  `claim_segment` to both staging models, replaced the single-column
+  `unique` test with `dbt_utils.unique_combination_of_columns` on
+  `[claim_id, claim_segment]`.
+- Documented `claim_segment` in both model descriptions as grain-completing
+  only, not a trustworthy analytical variable in its own right, same
+  treatment as `product_service_id`/`days_supply` elsewhere.
+
+**Status:** All 4 staging models built (beneficiary, pde, inpatient,
+outpatient), 21/21 tests passing including composite-key reconciliation.
+Next: stg_carrier (minimal, per runbook's trim guidance), then the seed
+file and intermediate models.
+
+
+---
 ## Template for future entries
 
 ## YYYY-MM-DD — Week N, Step X: < short description>

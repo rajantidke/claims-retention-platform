@@ -1,0 +1,50 @@
+version: 2
+
+models:
+  - name: stg_inpatient
+    description: >
+      One row per inpatient claim-segment (grain is claim_id + segment,
+      not claim_id alone, CMS splits some claims across up to 2 segments
+      for revenue-line-grouping purposes). Per the DE-SynPUF codebook,
+      SEGMENT itself was suppressed/capped at 2 as part of disclosure
+      treatment, it's used here only to complete the grain, not as a
+      trustworthy analytical variable in its own right. Diagnosis codes
+      kept wide (10 columns) for now.
+    columns:
+      - name: claim_id
+        data_tests:
+          - not_null
+      - name: beneficiary_id
+        data_tests:
+          - not_null
+    data_tests:
+      - dbt_utils.equal_rowcount:
+          arguments:
+            compare_model: source('raw', 'inpatient')
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - claim_id
+              - claim_segment
+
+  - name: stg_outpatient
+    description: >
+      One row per outpatient claim-segment (grain is claim_id + segment,
+      same reasoning as stg_inpatient). No admission/discharge/DRG fields —
+      these are inpatient-only concepts per the DE-SynPUF codebook.
+    columns:
+      - name: claim_id
+        data_tests:
+          - not_null
+      - name: beneficiary_id
+        data_tests:
+          - not_null
+    data_tests:
+      - dbt_utils.equal_rowcount:
+          arguments:
+            compare_model: source('raw', 'outpatient')
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - claim_id
+              - claim_segment
