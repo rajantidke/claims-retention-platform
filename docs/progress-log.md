@@ -479,6 +479,44 @@ outpatient), 21/21 tests passing including composite-key reconciliation.
 Next: stg_carrier (minimal, per runbook's trim guidance), then the seed
 file and intermediate models.
 
+---
+## 2026-09-27 — Week 4, Part 2 (cont.): int_fill_events and int_member_months
+
+**int_fill_events**
+- Built on `stg_pde`: added `in_clean_window` (Gate 4's Feb 2010 cutoff,
+  read from the `clean_window_end` var rather than hardcoded),
+  `is_zero_days_supply`, and `coverage_start`/`coverage_end` (null when
+  zero days-supply). First model to actually consume the `vars` block set
+  up in Part 1, and the first to use `ref()` instead of `source()`.
+- 35/35 tests passing, `equal_rowcount` against `stg_pde` confirmed 1:1.
+
+**int_member_months — the fiddly one**
+- Month spine (`generate_series`, 2008-01 through 2010-12, 36 months)
+  cross-joined against all distinct beneficiaries (~116k × 36 ≈ 4.19M rows
+  expected), joined back to `stg_beneficiary` on `(beneficiary_id,
+  source_year = month_year)` to pull the correct year's demographic/
+  coverage snapshot per month.
+- Built in ~3 seconds despite the row count, DuckDB handled the
+  cross-join efficiently, no performance concerns.
+- `has_full_year_part_d` encodes the real enrollment-precision limitation:
+  DE-SynPUF gives coverage-month *counts* per year, not *which* months,
+  so month-level analysis is only trustworthy for beneficiaries with all
+  12 months of coverage in a given year.
+- **Exclusion size, now measured as the runbook required**: of 116,352
+  total beneficiaries, 94,564 (81.3%) have at least one full year of Part D
+  coverage; 21,788 (18.7%) do not and are excluded from month-level
+  enrollment-precision analysis. This number goes in the README once
+  written and will need restating whenever a reviewer asks about the
+  denominator.
+- Composite uniqueness test on `(beneficiary_id, month_start)` and a
+  singular test (`assert_no_alive_months_after_death`) both passing —
+  confirms no beneficiary is marked "alive" for a month after their
+  recorded death date.
+
+**Status:**  7 models total (5 staging + 2 intermediate), 40/40 tests
+passing. Next: `int_coverage_spells` (gaps-and-islands merge, deliberately
+non-recursive per the Gate 6 PDC-demotion reasoning), then closing out
+Week 4.
 
 ---
 ## Template for future entries

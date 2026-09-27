@@ -1,0 +1,24 @@
+version: 2
+
+models:
+  - name: int_member_months
+    description: >
+      One row per beneficiary per calendar month, 2008-01 through 2010-12.
+      IMPORTANT ENROLLMENT CAVEAT: DE-SynPUF gives coverage-month *counts*
+      per year (e.g. "10 months of Part D"), not *which* months were
+      covered. Any analysis needing month-level enrollment precision must
+      restrict to has_full_year_part_d = true, where there's no ambiguity.
+      See docs/progress-log.md for the size of this exclusion once known.
+    columns:
+      - name: beneficiary_id
+        data_tests:
+          - not_null
+      - name: month_start
+        data_tests:
+          - not_null
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - beneficiary_id
+              - month_start
