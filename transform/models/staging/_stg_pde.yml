@@ -5,10 +5,12 @@ models:
     description: >
       One row per prescription fill. product_service_id is a VARCHAR NDC-
       format code; individual-code and person-level identity are NOT
-      reliable (Gates 1, 2, 5 in docs/fidelity_audit.md). days_supply does
-      not reliably predict actual refill timing (Gate 6, Test 1): do not
-      build precise per-person coverage math on top of it without
-      accounting for this limitation.
+      reliable (Gates 1, 2, 5 in docs/fidelity_audit.md). labeler_cd (first
+      5 digits) is derived here for convenience only — Gate 2 established
+      it carries no real person-level signal, indistinguishable from
+      chance. days_supply does not reliably predict actual refill
+      timing (Gate 6, Test 1): do not build precise per-person coverage math
+      on top of it without accounting for this limitation.
     columns:
       - name: pde_id
         data_tests:
@@ -20,6 +22,10 @@ models:
       - name: days_supply
         data_tests:
           - not_null
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 365
     data_tests:
       - dbt_utils.equal_rowcount:
           arguments:
