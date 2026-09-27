@@ -1,0 +1,6 @@
+concept,code_system,code,description,source
+type_2_diabetes,ICD9,25000,"Diabetes mellitus without mention of complication, type II",CCW
+type_2_diabetes,ICD9,25002,"Diabetes mellitus without complication, type II uncontrolled",CCW
+type_2_diabetes,ICD10,E119,"Type 2 diabetes mellitus without complications",CCW
+heart_failure,ICD9,4280,"Congestive heart failure, unspecified",CCW
+heart_failure,ICD10,I5020,"Unspecified systolic heart failure",CCW

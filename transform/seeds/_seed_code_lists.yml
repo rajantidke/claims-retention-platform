@@ -1,0 +1,14 @@
+version: 2
+
+seeds:
+  - name: seed_code_lists
+    description: >
+      Minimal ICD-9/ICD-10 concept crosswalk: proves the seed-swap
+      mechanism (point at a modern extract, seed stays the interface),
+      not meant to be comprehensive. Two concepts only for v1.0.
+    columns:
+      - name: code_system
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['ICD9', 'ICD10']

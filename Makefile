@@ -1,5 +1,4 @@
-.PHONY: setup download ingest audit build dbt-deps dbt-test dbt-docs test clean
-
+.PHONY: setup download ingest audit build dbt-deps dbt-seed dbt-test dbt-docs test clean
 setup:
 	uv venv && uv pip install -e ".[dev]" && pre-commit install
 
@@ -17,6 +16,10 @@ DBT = dbt
 
 dbt-deps:
 	cd transform && dbt deps
+
+
+dbt-seed:
+	$(DBT) seed --project-dir transform --profiles-dir transform
 
 build:
 	$(DBT) build --project-dir transform --profiles-dir transform
