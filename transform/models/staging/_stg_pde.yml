@@ -1,0 +1,26 @@
+version: 2
+
+models:
+  - name: stg_pde
+    description: >
+      One row per prescription fill. product_service_id is a VARCHAR NDC-
+      format code; individual-code and person-level identity are NOT
+      reliable (Gates 1, 2, 5 in docs/fidelity_audit.md). days_supply does
+      not reliably predict actual refill timing (Gate 6, Test 1): do not
+      build precise per-person coverage math on top of it without
+      accounting for this limitation.
+    columns:
+      - name: pde_id
+        data_tests:
+          - not_null
+          - unique
+      - name: beneficiary_id
+        data_tests:
+          - not_null
+      - name: days_supply
+        data_tests:
+          - not_null
+    data_tests:
+      - dbt_utils.equal_rowcount:
+          arguments:
+            compare_model: source('raw', 'pde')
