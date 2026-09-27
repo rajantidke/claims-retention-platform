@@ -1,0 +1,30 @@
+name: claims_retention
+version: 1.0.0
+config-version: 2
+profile: claims_retention
+
+model-paths: ["models"]
+seed-paths: ["seeds"]
+test-paths: ["tests"]
+macro-paths: ["macros"]
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+vars:
+  # Every analysis boundary is config, never hardcoded in a model.
+  clean_window_end: '2010-01-31'   # Gate 4: Feb 2010 onward is unusable
+  study_start:      '2008-01-01'
+  gap_days: 60                     # discontinuation gap definition
+  washout_days: 180                # new-user washout
+
+models:
+  claims_retention:
+    staging:
+      +materialized: view
+      +schema: staging
+    intermediate:
+      +materialized: table
+      +schema: intermediate
+    marts:
+      +materialized: table
+      +schema: marts

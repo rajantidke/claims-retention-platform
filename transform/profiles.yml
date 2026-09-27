@@ -1,0 +1,22 @@
+claims_retention:
+  target: dev
+  outputs:
+    dev:
+      type: duckdb
+      path: data/claims.duckdb
+      threads: 4
+    ci:
+      type: duckdb
+      path: data/claims_ci.duckdb
+      threads: 2
+    # v1.1 — placeholders only, never real values
+    snowflake:
+      type: snowflake
+      account: "{{ env_var('SNOWFLAKE_ACCOUNT', '') }}"
+      user: "{{ env_var('SNOWFLAKE_USER', '') }}"
+      password: "{{ env_var('SNOWFLAKE_PASSWORD', '') }}"
+      role: "{{ env_var('SNOWFLAKE_ROLE', '') }}"
+      warehouse: "{{ env_var('SNOWFLAKE_WAREHOUSE', 'COMPUTE_WH') }}"
+      database: "{{ env_var('SNOWFLAKE_DATABASE', '') }}"
+      schema: analytics
+      threads: 4

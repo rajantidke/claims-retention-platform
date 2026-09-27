@@ -1,4 +1,4 @@
-.PHONY: setup download ingest audit test clean
+.PHONY: setup download ingest audit build dbt-deps dbt-test dbt-docs test clean
 
 setup:
 	uv venv && uv pip install -e ".[dev]" && pre-commit install
@@ -12,6 +12,20 @@ ingest:
 
 audit:
 	python -m audit.fidelity
+
+DBT = dbt
+
+dbt-deps:
+	cd transform && dbt deps
+
+build:
+	$(DBT) build --project-dir transform --profiles-dir transform
+
+dbt-test:
+	$(DBT) test --project-dir transform --profiles-dir transform
+
+dbt-docs:
+	$(DBT) docs generate --project-dir transform --profiles-dir transform && $(DBT) docs serve --project-dir transform --profiles-dir transform
 
 test:
 	pytest -q

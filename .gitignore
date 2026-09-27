@@ -14,6 +14,7 @@ data/interim/
 .env.*
 *.pem
 profiles.yml
+!transform/profiles.yml
 #Possible dbt profiles for the snowflake work in the future
 
 # Python
@@ -36,3 +37,4 @@ mlartifacts/
 .ipynb_checkpoints/
 .vscode/
 *.egg-info/
+transform/.user.yml

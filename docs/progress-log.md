@@ -386,6 +386,65 @@ patched to v2, and the full findings written up in `docs/fidelity_audit.md`.
 Next: Week 3/4 — dbt initialization and staging models.
 
 ---
+## 2026-09-25 — Week 3 close-out: dbt initialization
+
+**Part 0 review fixes (all 7 items) closed out first** : see prior entries
+for the detailed determinism fixes, figures/JSON output, evidence table,
+tone edits, bucket relabel, and the new automated determinism test suite
+in `tests/test_audit_determinism.py`.
+
+**dbt scaffold built by hand** (not `dbt init`, which would have fought the
+existing `transform/` layout):
+- `dbt-core>=1.8,<2.0` and `dbt-duckdb>=1.8,<2.0` installed (resolved to
+  1.12.5 / 1.11.0).
+- `transform/dbt_project.yml`: model-paths/seed-paths/etc. declared,
+  analysis-boundary vars (`clean_window_end`, `study_start`, `gap_days`,
+  `washout_days`) centralized rather than hardcoded per-model, and default
+  materializations set per folder (staging=view, intermediate/marts=table).
+- `transform/packages.yml` + `dbt deps`: installed `dbt_utils` 1.4.1 for
+  its test/utility macros, needed by Week 4's reconciliation tests.
+- `transform/profiles.yml`: `dev` (full DB) and `ci` (1k-fixture) targets,
+  plus a v1.1 Snowflake placeholder block using only `env_var()` — no real
+  credentials ever required. `.gitignore`'s bare `profiles.yml` exclusion
+  negated specifically for `transform/profiles.yml` (verified working via
+  `git add` + `git status`, not just `git check-ignore -v`, since that
+  command's exit-code semantics were confusingly ambiguous on a
+  negation-matched file during testing).
+- `transform/models/staging/_sources.yml`: the 5 raw tables declared as
+  dbt sources, with a description noting the all-VARCHAR loading choice.
+
+**Two real mistakes caught before committing, not invented independently:**
+- `clean_window_end` was initially set to `2010-02-01` (the first *bad*
+  day per Gate 4) instead of `2010-01-31` (the last *good* day): would
+  have silently included one day of already-unreliable February data in
+  every "clean" query.
+- The Makefile's dbt invocation used `cd transform && dbt build`, which is
+  inconsistent with `profiles.yml`'s repo-root-relative paths
+  (`data/claims.duckdb`, not `../data/claims.duckdb`). Rebuilt the
+  Makefile around a `$(DBT)` variable using `--project-dir`/
+  `--profiles-dir` flags, run from the repo root — this is also what the
+  runbook specifies and what `dbt build --target ci` will expect to work
+  consistently with later.
+- Along the way: `dbt`'s CLI wanted `--project-dir`/`--profiles-dir`
+  placed *after* the subcommand (`dbt build --project-dir ...`), not
+  before (`dbt --project-dir ... build`) — a version-specific CLI quirk,
+  not a config error.
+
+**Verification**
+- `dbt debug`: all checks passed, connection confirmed.
+- `dbt list --resource-type source`: all 5 sources correctly recognized.
+- Smoke test: one throwaway model `select count(*) from
+  {{ source('raw','pde') }}`) built successfully via `make build`
+  (`PASS=1 WARN=0 ERROR=0`), then deleted, confirming the full profile →
+  project → source → model chain works end-to-end before writing any
+  real model.
+
+**Status: Week 3 is now fully closed**: the fidelity audit (main
+substance of Week 3) was completed earlier; this closes out the
+carried-over dbt-initialization portion. Next: Week 4: staging
+models, seeds, and intermediate models.
+
+---
 ## Template for future entries
 
 ## YYYY-MM-DD — Week N, Step X: < short description>

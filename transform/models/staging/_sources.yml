@@ -1,0 +1,13 @@
+version: 2
+sources:
+  - name: raw
+    schema: raw
+    description: >
+      DE-SynPUF Sample 1, loaded verbatim by ingest/load_raw.py.
+      Every column is VARCHAR by design, see docs/fidelity_audit.md.
+    tables:
+      - name: beneficiary
+      - name: inpatient
+      - name: outpatient
+      - name: pde
+      - name: carrier
