@@ -106,7 +106,7 @@ beneficiary record.
 Nothing in this section raised a concern. The data is structurally sound,
 correctly sourced, and fully linked.
 
-## Part B: Does the timing make sense? And what happens near the end of the file. (The phenomena of "the 2010 decline")
+## Part B: Does the timing make sense? And what happens near the end of the file. (The phenomenon of "the 2010 decline")
 
 **Date ranges.** Almost every claim falls inside the expected 2008-2010
 window. A small number of hospital and outpatient claims (224 and 312
@@ -378,7 +378,17 @@ fills carry any extra meaning? Each person's fill count was kept exactly
 the same, but their fill dates were randomly scattered across their own
 observation window, and the result compared against reality on three
 separate measures. All three came back essentially identical between the
-real data and the randomly scattered version. Third, is the prescription
+real data and the randomly scattered version.
+
+
+![Gate 6, Test 2: real vs. redrawn timing structure](../reports/figures/gate6_test2_timing_structure.png)
+*Figure 7: Real fill-timing structure compared against dates redrawn
+randomly within each person's own observation window, on all three
+measures tested. The near-total overlap across all three panels is the
+clearest single piece of evidence that a long gap in this file reflects
+fill count and window length, not real behavior.*
+
+Third, is the prescription
 data at least meaningfully connected to the rest of a person's health
 record, so that sicker people, by chronic condition count, actually tend
 to fill more? Yes, modestly.
@@ -401,6 +411,26 @@ very nearly how long each prescription lasts, does not survive. The one
 piece of encouraging news is that the file's overall structure, meaning
 how a person's prescription activity relates to their broader health
 profile, remains intact enough to build on.
+
+## The evidence, in one table
+
+The sections above tell the story. This table below is the proof underneath it:
+every property this project depends on, the specific test that checked it,
+the actual result, and the verdict that follows from it.
+
+| Property | Test | Result | Verdict |
+|---|---|---|---|
+| Individual drug identity (product code) persists across a person's fills | Gate 1: population-wide repeat-pair rate | 0.06% of (beneficiary, product code) pairs repeat | Does not survive |
+| Manufacturer-level identity carries real person-level signal | Gate 2: real vs. shuffled-null concentration | Real mean 0.216 vs. shuffled 0.216; median 0.133 vs. 0.133 | Does not survive — indistinguishable from chance |
+| Preference for 90-day supply is a stable personal trait | Gate 3: real vs. shuffled-null share, KS test | Real mean 0.116 vs. shuffled 0.108; KS = 0.049, p ≈ 9e-106 | Statistically real, practically small |
+| Claims volume declines in 2010 due to ordinary processing lag | Gate 4: monthly fills-per-enrolled vs. 2009 plateau | Feb 2010 already 14% below plateau; Dec 2010 at 39% of plateau | Rejected — decline is too early and too steep for lag |
+| Top manufacturer codes correspond to real, findable companies | Gate 5: FDA NDC Directory lookup | 0/5 top codes found; 2 lower-ranked codes found, one a repackager | Inconclusive on its own — supports Gate 2 |
+| Days-supply governs the gap to the next fill | Gate 6, Test 1: real vs. within-person shuffled gap difference | Real diff 1.0 day vs. shuffled diff 2.0 days | Does not survive |
+| Fill timing carries structure beyond raw fill count | Gate 6, Test 2: real vs. redrawn fill dates, 3 measures | All three measures match within noise (e.g. 60+ day gap: 51.5% vs. 51.2%) | Does not survive — this is the core finding |
+| The prescription file connects meaningfully to the rest of the record | Gate 6, Test 3: Spearman correlation, fill count vs. chronic conditions | ρ = 0.240 (threshold 0.20) | Survives |
+| Age and chronic condition count move together (65+) | Corrected Q12 Pair 1: Spearman, 65+ only | ρ = 0.159, monotonic across decades | Survives, modestly |
+| Hospital admissions and hospital cost move together | Corrected Q12 Pair 2: Pearson, 2008-matched | ρ = 0.828; $8,503 average cost for one admission | Survives, strongly |
+| Chronic condition count and total yearly cost move together | Q12 Pair 3: Pearson | ρ = 0.553 | Survives, moderately |
 
 ## Constraints this places on the analysis
 
@@ -440,8 +470,6 @@ Medicare figures.** Any comparison against outside benchmarks needs to
 account for this, and any finding phrased as a rate or a prevalence should
 be treated as a property of this file, not a real-world estimate.
 
-That makes me happy for all the beneficiaries whose identities are preserved and thoroughly anonymised. And slightly melancholic, that my planned way of measuring discontinuation or adherence/rentention is dead, though what replaces it turns out to be more standard practice than what I'd planned. So there is light at the end of the tunnel.
-
 **What remains solid.** Record counts, costs, hospital admissions, whether
 someone filled anything at all in a given month, and the overall
 connection between a person's health profile and how much they use the
@@ -449,6 +477,8 @@ healthcare system all held up under testing. These are the load-bearing
 pieces the rest of the project builds on.
 
 ## What changed in the project as a result
+
+That makes me happy for all the beneficiaries whose identities are preserved and thoroughly anonymised. And slightly melancholic, that my planned way of measuring discontinuation or adherence/rentention is dead, though what replaces it turns out to be more standard practice than what I'd planned. So there is light at the end of the tunnel.
 
 None of the above meant starting over. It meant being honest about which
 specific pieces of the original plan depended on something this dataset
