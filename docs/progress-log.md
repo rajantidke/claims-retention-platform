@@ -519,6 +519,91 @@ non-recursive per the Gate 6 PDC-demotion reasoning), then closing out
 Week 4.
 
 ---
+## 2026-09-27 — Week 3 + Week 4 complete: dbt foundation, staging, intermediate
+
+**Full scope closed in this stretch:** the six review fixes carried over
+from the strategy session (Part 0), the dbt initialization outstanding
+from Week 3 (Part 1), and all of Week 4's staging/seed/intermediate
+modeling (Part 2). See prior entries for Part 0's detail; this entry
+covers Parts 1-2.
+
+**Part 1 — dbt initialization**
+- Installed `dbt-core`/`dbt-duckdb` (1.12.5 / 1.11.0), scaffolded
+  `transform/` by hand rather than `dbt init`.
+- Caught two real gaps against the runbook before committing: `clean_window_end`
+  was initially set to `2010-02-01` (first bad day) instead of `2010-01-31`
+  (last good day per Gate 4); the Makefile's dbt invocation was
+  inconsistent with `profiles.yml`'s repo-root-relative paths. Both fixed
+  before any model was built on top of them.
+- Also resolved along the way: a stale `ruff-pre-commit` git tag (`v0.6.9`
+  no longer resolvable, bumped to `v0.16.4`), and a `.pre-commit-config.yaml`
+  structural bug (a missing `- repo:` line had merged two hook blocks into
+  one, causing pre-commit to check out the wrong tag for the wrong repo).
+- `dbt debug`, source listing, and a throwaway smoke test all confirmed
+  the full profile → project → source → model chain before real modeling
+  began.
+
+**Part 2 — staging layer (5 models)**
+- `stg_beneficiary`, `stg_pde`, `stg_carrier` built per spec, each with
+  `equal_rowcount` reconciliation against its raw source.
+- `stg_inpatient`/`stg_outpatient`: initial `unique` test on `claim_id`
+  failed (68 and 10,975 duplicates respectively). Investigated rather than
+  worked around — every duplicate had exactly 2 rows split across
+  `SEGMENT` values 1/2. Checked the actual DE-SynPUF codebook before
+  fixing: `SEGMENT` is a real CMS claim-line mechanism, but was itself
+  capped at 2 and suppressed as part of disclosure treatment — so it's
+  used here only to complete the true grain `(claim_id, segment)`, not
+  treated as a trustworthy analytical variable. Composite-key test via
+  `dbt_utils.unique_combination_of_columns` replaces the single-column test.
+- Closed two gaps found on review against the full runbook spec after
+  staging was "done": added `labeler_cd` to `stg_pde` (documented as
+  derived-for-convenience only, given Gate 2 already showed no real
+  person-level signal there) and a `dbt_utils.accepted_range` test on
+  `days_supply` (0-365).
+- `seed_code_lists.csv` (2 concepts, ICD9+ICD10) loaded via `dbt seed`,
+  with an `accepted_values` schema test and a singular test
+  (`assert_code_lists_have_both_systems`) guaranteeing every concept has
+  both coding systems — the check that makes "swap in a modern extract,
+  the pipeline stays valid" a real, tested claim rather than aspirational.
+- Created `FUTURE_WORK.md`: logged the Week 2 clustering-as-EDA idea
+  (deferred, gates already answer the relevant questions more rigorously)
+  and, later, the `int_coverage_spells` stockpiling approximation.
+
+**Part 2 — intermediate layer (3 models)**
+- `int_fill_events`: derived `in_clean_window` (first real use of the
+  `clean_window_end` var), `is_zero_days_supply`, `coverage_start`/
+  `coverage_end`. First model using `ref()` instead of `source()`.
+- `int_member_months`: month spine (`generate_series`, 36 months) cross-joined
+  against all beneficiaries (~4.19M rows), joined back to `stg_beneficiary`
+  on `(beneficiary_id, source_year = month_year)`. Built in ~3-4s despite
+  row count. Measured the full-year-Part-D exclusion the runbook flagged
+  as something "every reviewer asks": **94,564 of 116,352 beneficiaries
+  (81.3%) have at least one full year of Part D coverage; 21,788 (18.7%)
+  are excluded from month-level enrollment-precision analysis.** Composite
+  uniqueness test on `(beneficiary_id, month_start)` plus a singular test
+  confirming no beneficiary is marked alive after their recorded death
+  date — both passing.
+- `int_coverage_spells`: non-recursive gaps-and-islands merge (running-max
+  window function + cumulative-sum spell numbering), deliberately not
+  modeling stockpiling. Built correctly on first attempt. Sanity-checked:
+  451,775 spells across 99,393 beneficiaries (16,959 zero-fill
+  beneficiaries, consistent with the ~14.5% zero-fill rate from the
+  original Week 2 EDA), median spell length 54 days, 12.03 average fills
+  per spell — no implausible values, no sign of a broken merge. Fill-count
+  reconciliation against `int_fill_events` (excluding zero-days-supply
+  fills) passing via a singular test. Stockpiling tradeoff documented in
+  both the model description and `FUTURE_WORK.md`.
+
+**Final state:** 8 models (5 staging + 3 intermediate), 1 seed, 44/44 tests
+passing, full lineage graph generated and captured
+(`reports/figures/dbt_lineage_graph.png`).
+
+**Status:** Weeks 3 and 4 are both fully complete. Next: Week 5 — metrics
+marts, the v0.5 tag (first resume-facing version), and the terminal-stop
+check (the last open design question, deciding Module D's discontinuation
+target definition).
+
+---
 ## Template for future entries
 
 ## YYYY-MM-DD — Week N, Step X: < short description>
