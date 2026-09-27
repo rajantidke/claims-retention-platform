@@ -8,16 +8,16 @@
     "labeler_pct_refill": 17.77504058318922
   },
   "gate2": {
-    "real_mean": 0.2161860525800268,
+    "real_mean": 0.21618605258002632,
     "real_median": 0.13333333333333333,
-    "shuffled_mean": 0.21553918410188908,
+    "shuffled_mean": 0.21553918410188902,
     "shuffled_median": 0.13274336283185842
   },
   "gate3": {
-    "real_mean": 0.11620044026964474,
-    "shuffled_mean": 0.10793515924559703,
-    "real_std": 0.12980800270811071,
-    "shuffled_std": 0.11904712032457854,
+    "real_mean": 0.11620044026964471,
+    "shuffled_mean": 0.10793515924559702,
+    "real_std": 0.12980800270811058,
+    "shuffled_std": 0.11904712032457847,
     "ks_stat": 0.04934798770318871,
     "ks_pvalue": 9.085359834016499e-106
   },
@@ -83,13 +83,13 @@
     "redrawn_resume90_pct": 60.41333556069971
   },
   "gate6_test3": {
-    "spearman_conditions": 0.23970392063103396,
-    "spearman_admissions": 0.12016706011489452,
+    "spearman_conditions": 0.23970392063103407,
+    "spearman_admissions": 0.12016706011489467,
     "passes_threshold": true
   },
   "part_d_corrections": {
     "pair1_spearman_65plus": 0.15919537689115595,
-    "pair2_corr_2008": 0.8282899550570683,
+    "pair2_corr_2008": 0.8282899550570684,
     "pair2_cost_per_admission": 8502.997413114384
   }
 }

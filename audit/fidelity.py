@@ -15,8 +15,9 @@ from scipy import stats
 import matplotlib.pyplot as plt
 import json
 from pathlib import Path
+import os
 
-DB_PATH = "data/claims.duckdb"
+DB_PATH = os.environ.get("CLAIMS_DB", "data/claims.duckdb")
 SEED = 7  # Like always, 007 is unavailable.
 
 
@@ -205,7 +206,7 @@ def gate4_monthly_plateau_threshold(con):
     """).pl()
 
     enrolled_per_year = con.execute("""
-        SELECT source_year, COUNT(DISTINCT DESYNPUF_ID) AS n_enrolled
+        SELECT CAST(source_year AS INTEGER) AS source_year, COUNT(DISTINCT DESYNPUF_ID) AS n_enrolled
         FROM raw.beneficiary
         GROUP BY source_year
     """).pl()
