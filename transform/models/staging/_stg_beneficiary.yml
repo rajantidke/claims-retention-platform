@@ -1,0 +1,23 @@
+version: 2
+
+models:
+  - name: stg_beneficiary
+    description: >
+      One row per beneficiary per year (2008-2010). Chronic condition flags
+      converted from source '1'/'2' coding to real booleans. See
+      docs/fidelity_audit.md for known limitations (chronic condition rates
+      run 1.6-2.4x higher than real Medicare).
+    columns:
+      - name: beneficiary_id
+        data_tests:
+          - not_null
+      - name: source_year
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [2008, 2009, 2010]
+    data_tests:
+      - dbt_utils.equal_rowcount:
+          arguments:
+            compare_model: source('raw', 'beneficiary')
