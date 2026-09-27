@@ -1,0 +1,21 @@
+version: 2
+
+models:
+  - name: int_coverage_spells
+    description: >
+      One row per continuous coverage spell per beneficiary: overlapping
+      or adjacent fills merged together. DELIBERATE APPROXIMATION: this
+      merges overlaps but does not stockpile (an early refill's coverage
+      does not push the next fill's effective start date forward to the
+      end of the prior supply). True stockpiling needs a recursive CTE;
+      given Gate 6 already demoted PDC to a documented limitation rather
+      than a primary metric, that three hours of work would sharpen a
+      number already established as unreliable. See FUTURE_WORK.md.
+    columns:
+      - name: beneficiary_id
+        data_tests:
+          - not_null
+    data_tests:
+      - dbt_utils.expression_is_true:
+          arguments:
+            expression: "spell_end >= spell_start"

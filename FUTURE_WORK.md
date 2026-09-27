@@ -22,3 +22,27 @@ already deliver, and it can't establish causal/temporal precedence at all
 
 Worth revisiting only as a supplementary sanity-check tool in a future EDA
 phase, not as primary evidence for a data-fidelity claim.
+
+
+## int_coverage_spells: non-recursive approximation (no stockpiling)
+
+`int_coverage_spells` (Week 4) merges overlapping and adjacent prescription
+fill coverage into continuous spells, but does not model stockpiling: an
+early refill's coverage does not push the next fill's *effective* start
+date forward to the end of the previous supply. A patient who refills 10
+days early is treated as if their new coverage starts immediately, rather
+than after their existing supply would have run out.
+
+True stockpiling logic requires a recursive CTE (each fill's effective
+start depends on the previous fill's effective end, which itself may have
+been pushed forward by the fill before it). Decided against for v1.0:
+Gate 6 (docs/fidelity_audit.md) already established that `days_supply`
+does not reliably predict actual refill timing in this dataset, and PDC
+(the metric stockpiling logic exists to support) was demoted from primary
+metric to a documented limitation as a direct result. Spending ~3 hours
+building the more precise version would sharpen a number already
+established as unreliable on this data.
+
+Revisit if: (a) a future dataset with trustworthy days-supply/timing
+behavior replaces DE-SynPUF, or (b) PDC is ever promoted back to a primary
+metric for a specific sub-analysis with its own validation.
