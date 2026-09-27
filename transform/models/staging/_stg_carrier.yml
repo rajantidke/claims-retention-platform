@@ -1,0 +1,22 @@
+version: 2
+
+models:
+  - name: stg_carrier
+    description: >
+      One row per carrier (doctor visit) claim. Deliberately minimal: kept
+      5 of 142 source columns. The 13 line-level payment amounts are
+      summed into one payment_amount; the 13 HCPCS line-level codes and
+      other line-level detail stay in raw until something actually needs
+      them. See docs/progress-log.md for the rationale.
+    columns:
+      - name: claim_id
+        data_tests:
+          - not_null
+          - unique
+      - name: beneficiary_id
+        data_tests:
+          - not_null
+    data_tests:
+      - dbt_utils.equal_rowcount:
+          arguments:
+            compare_model: source('raw', 'carrier')
