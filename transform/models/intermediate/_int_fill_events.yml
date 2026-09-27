@@ -1,0 +1,22 @@
+version: 2
+
+models:
+  - name: int_fill_events
+    description: >
+      One row per prescription fill (same grain as stg_pde), with derived
+      flags for the clean analysis window (Gate 4: Feb 2010 onward is
+      unreliable) and zero-days-supply fills (2.12% of the file, kept in
+      counts but excluded from coverage-span math since they cover zero
+      days by definition).
+    columns:
+      - name: pde_id
+        data_tests:
+          - not_null
+          - unique
+      - name: beneficiary_id
+        data_tests:
+          - not_null
+    data_tests:
+      - dbt_utils.equal_rowcount:
+          arguments:
+            compare_model: ref('stg_pde')
