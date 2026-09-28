@@ -59,8 +59,7 @@ tables:
 
 Everything was loaded into DuckDB with no changes made to the raw values,
 not even basic type conversions. That was a deliberate choice: in my experience
-cleaning up
-data too early can quietly erase evidence of a problem before you've had
+cleaning up data too early can quietly erase evidence of a problem before you've had
 a chance to notice it. Every column was loaded as plain text first, so
 that things like drug codes and diagnosis codes, which often have
 meaningful leading zeros, wouldn't get silently mangled by a database
@@ -119,13 +118,14 @@ just how hospital billing works.
 
 **The decline in claims volume through 2010.** This is the finding that
 mattered. Plotting monthly claim volume across the full three years shows
-a steady, healthy plateau from early 2008 through the end of 2009, then a
-steep decline through all of 2010, ending the year at roughly a quarter
-of the normal volume.
+a slow start in early 2008, a steady plateau from spring 2008 through the
+end of 2009, and then a steep decline through all of 2010, ending the year
+at roughly a quarter of the normal volume.
 
 ![Monthly claim volume by table, 2008-2010](../reports/figures/monthly_claim_volume.png)
-*Figure 1: Monthly claim volume by table, 2008-2010. Note the steady
-plateau through 2009, followed by a steep decline through all of 2010.*
+*Figure 1: Monthly claim volume by table, 2008-2010 (raw monthly counts).
+The first months of 2008 are thin, volume holds a plateau through 2009,
+and it declines steeply through all of 2010.*
 
 My first read on this was that it looked like ordinary claims lag: the
 idea that the most recent months in any claims dataset always look
@@ -133,21 +133,40 @@ artificially thin, simply because some of those claims haven't finished
 being processed and entered into the system yet. That explanation turned
 out to be wrong, and a closer look at the actual shape of the decline is
 what gave it away. Real claims lag only softens the last few months of a
-dataset. It doesn't start in January of a year and get steadily worse for
-eleven months straight. When I measured fills per enrolled beneficiary
-month by month, February 2010, the second month of the year, was already
-15% below the healthy 2009 average. That's simply too early and too steep
-for a processing-delay explanation to hold up.
+dataset. It doesn't start at the beginning of a year and get worse every
+month for the next eleven.
+
+To measure it properly, I counted fills per enrolled beneficiary each
+month, normalized to a 30-day month so that February's length can't pass
+for a decline, and expressed every month as a percentage of the 2009
+average (the plateau: 1.554 fills per enrolled beneficiary per 30 days).
+Through 2010, every month sat lower than the one before it: 95.5% of the
+plateau in January, 93.0% in February, 89.9% in March, 80.3% by May,
+57.4% by August, and 24.2% by December. By April, eight months before the
+file's last month, activity was already down 14% (85.7% of the plateau),
+which is far earlier than claims run-out reaches back.
 
 The more accurate description: something specific to how 2010 was
 constructed in this file causes prescription activity to thin out
-progressively across the year, starting almost immediately. Whatever the
-underlying cause, the practical consequence is the same either way. Any
-analysis that depends on someone's activity late in the file, particularly
-anything meant to represent "this person stopped filling prescriptions,"
-needs to treat data from February 2010 onward with real caution. That
-month became the natural cutoff for defining a clean, trustworthy analysis
-window later in the project.
+steadily across the year. Whatever the underlying cause, the practical
+consequence is the same either way. Any analysis that depends on
+someone's activity late in the file, particularly anything meant to
+represent "this person stopped filling prescriptions," has to stay out of
+the back end of the file.
+
+I ended the clean window on January 31, 2010. That is deliberately
+conservative: February still sits above the 90% line and March is the
+first month under it (89.9%), but stopping a month early costs the
+analysis nothing and keeps the boundary clear of the first breach.
+
+**The other end of the file.** The same measure run at the front shows
+the mirror image. January 2008 sits at 45.6% of the 2009 plateau,
+February at 72.7%, March at 86.5%, and April at 95.1%, the first month
+above the 90% line. I checked whether this could be a seasonal January
+effect, and it isn't: January and February 2009 both sit at 100.9% of the
+plateau. So the trustworthy stretch of this file runs from April 2008 to
+January 2010, and anything reported as a rate or a level stays inside it.
+Earlier months are still kept wherever a calculation needs to look back.
 
 ## Part C: What do prescription fills actually look like? (And the discovery that changed the project)
 
@@ -215,8 +234,6 @@ just this one. Anything in the project that depended on comparing one
 named drug against another had to be rebuilt around a different approach,
 described later in this document.
 
-
-
 ## Part D: Do the patients look real, and do things that should be related actually behave that way? (Demographics and the three correlation pairs)
 
 **Basic demographics.** Age, sex, race, and state distributions all
@@ -281,14 +298,13 @@ weaker than they should be, though not necessarily broken outright once
 you account for real-world structure like the disability-eligibility
 pattern above.
 
-
 ## Part E: Six tests to settle exactly what this data can support
 
 The drug-identity discovery in Part C raised a bigger question worth
 answering properly rather than assuming: if individual drug codes are
 this unreliable, what else in this file might look fine on the surface but
-fall apart under closer inspection? After a huge strategy session with sources
-far smarter than me, Six specific tests were built to
+fall apart under closer inspection? The gate design was reviewed before any
+test was run, then six specific tests were built to
 answer that, each one aimed at a single, precise question, with the
 outcome decided in advance for every possible result. That last part
 mattered. It meant no test could quietly turn into a reason to second-guess
@@ -306,15 +322,15 @@ you thought you saw in the real data was probably never really there. If
 they look meaningfully different, that's solid evidence the pattern is
 real.
 
-**Gate 1: does the "no repeated drug codes" finding hold up across the
-whole file, not just one patient?** Yes. Checked against all 5.5 million
+**Gate 1: does the "no repeated drug codes" finding hold up across the whole file, not just one patient?**
+Yes. Checked against all 5.5 million
 prescription fills, only 0.06% of patient-and-exact-drug-code pairs ever
 repeat. Checked at the coarser manufacturer level instead of the exact
 drug code, the repeat rate rises to about 18%, which sounded promising
 until Gate 2 explained what that number actually means.
 
-**Gate 2: is that manufacturer-level repetition a real personal pattern,
-or just what you'd expect by chance?** This is where the shuffle test
+**Gate 2: is that manufacturer-level repetition a real personal pattern, or just what you'd expect by chance?**
+This is where the shuffle test
 came in directly. Real data and a randomly scrambled version of the same
 data produced statistically identical results.
 
@@ -328,8 +344,8 @@ it's just what naturally happens when a handful of manufacturer codes
 dominate the file overall. Manufacturer-level grouping doesn't carry
 trustworthy person-level signal either.
 
-**Gate 3: is a preference for 90-day prescriptions over 30-day ones a real
-personal trait?** Same shuffle-test approach, applied to prescription
+**Gate 3: is a preference for 90-day prescriptions over 30-day ones a real personal trait?**
+Same shuffle-test approach, applied to prescription
 length instead of manufacturer. The result here was more mixed. Real data
 did show slightly more consistency than the scrambled version, and a
 formal statistical test confirmed the difference was real rather than
@@ -340,15 +356,23 @@ noise. But the size of that difference was small.
 real data versus a randomly shuffled version. The two distributions are
 close, with a small but statistically real gap.*
 
-**Gate 4: exactly when does the 2010 decline from Part B actually start
-breaking things?** Measuring fills per enrolled beneficiary month by
-month, February 2010 was already 15% below the healthy 2009 average, and
-every month after that got worse, ending the year at about a quarter of
-normal. This confirmed the claims-lag explanation from Part B was wrong
-and set a hard, specific boundary: data from February 2010 onward should
-be treated with real caution in any later analysis.
+**Gate 4: exactly when does the 2010 decline from Part B start, and where does the file become trustworthy?**
+I measured fills per enrolled
+beneficiary each month, normalized to a 30-day month, and expressed every
+month as a percentage of the 2009 plateau (1.554 fills per enrolled
+beneficiary per 30 days). In 2010 every month was lower than the one
+before it: 95.5% in January, 93.0% in February, 89.9% in March (the first
+month under the 90% line), and 24.2% by December. That confirmed the
+claims-lag explanation from Part B was wrong, and it set the upper edge of
+the analysis window at January 31, 2010, deliberately a month ahead of the
+first breach. The same rule applied to the front of the file gives a lower
+edge: January to March 2008 sit at 45.6%, 72.7% and 86.5% of the plateau,
+and April 2008 (95.1%) is the first month above the line. January and
+February 2009 both sit at 100.9%, so the early-2008 ramp isn't a seasonal
+January effect. The trustworthy window is April 2008 through January 2010.
 
-**Gate 5: are the top manufacturer codes even real companies?** Looking
+**Gate 5: are the top manufacturer codes even real companies?**
+Looking
 the five most common manufacturer codes up in the FDA's official drug
 directory, none of them returned any results. A couple of manufacturer
 codes further down the popularity list did turn out to be real, findable
@@ -362,8 +386,8 @@ that no longer operates. The stronger evidence that these codes carry no
 real signal is Gate 2, above. This lookup is supporting evidence, not the
 main proof.
 
-**Gate 6: does the timing between prescription refills carry any real
-meaning, beyond just how many prescriptions someone filled overall?** This
+**Gate 6: does the timing between prescription refills carry any real meaning, beyond just how many prescriptions someone filled overall?**
+This
 was the most important remaining question, since the whole idea of
 "medication persistence" depends on being able to say a long gap between
 fills represents a real, meaningful pause or stop.
@@ -379,7 +403,6 @@ the same, but their fill dates were randomly scattered across their own
 observation window, and the result compared against reality on three
 separate measures. All three came back essentially identical between the
 real data and the randomly scattered version.
-
 
 ![Gate 6, Test 2: real vs. redrawn timing structure](../reports/figures/gate6_test2_timing_structure.png)
 *Figure 7: Real fill-timing structure compared against dates redrawn
@@ -423,7 +446,8 @@ the actual result, and the verdict that follows from it.
 | Individual drug identity (product code) persists across a person's fills | Gate 1: population-wide repeat-pair rate | 0.06% of (beneficiary, product code) pairs repeat | Does not survive |
 | Manufacturer-level identity carries real person-level signal | Gate 2: real vs. shuffled-null concentration | Real mean 0.216 vs. shuffled 0.216; median 0.133 vs. 0.133 | Does not survive — indistinguishable from chance |
 | Preference for 90-day supply is a stable personal trait | Gate 3: real vs. shuffled-null share, KS test | Real mean 0.116 vs. shuffled 0.108; KS = 0.049, p ≈ 9e-106 | Statistically real, practically small |
-| Claims volume declines in 2010 due to ordinary processing lag | Gate 4: monthly fills-per-enrolled vs. 2009 plateau | Feb 2010 already 14% below plateau; Dec 2010 at 39% of plateau | Rejected — decline is too early and too steep for lag |
+| Claims volume declines in 2010 due to ordinary processing lag | Gate 4: monthly fills per enrolled beneficiary, 30-day normalised, as a percentage of the 2009 plateau (1.554) | Every 2010 month lower than the one before: 95.5% in Jan, 93.0% Feb, 89.9% Mar (first month under 90%), 24.2% by Dec | Rejected — a slide through all twelve months of 2010 is far longer than claims run-out |
+| Early-2008 volume is representative | Gate 4, same rule applied to the front of the file | Jan 45.6%, Feb 72.7%, Mar 86.5%, Apr 95.1% of plateau; Jan and Feb 2009 both 100.9% | Does not hold before April 2008; not a seasonal January effect |
 | Top manufacturer codes correspond to real, findable companies | Gate 5: FDA NDC Directory lookup | 0/5 top codes found; 2 lower-ranked codes found, one a repackager | Inconclusive on its own — supports Gate 2 |
 | Days-supply governs the gap to the next fill | Gate 6, Test 1: real vs. within-person shuffled gap difference | Real diff 1.0 day vs. shuffled diff 2.0 days | Does not survive |
 | Fill timing carries structure beyond raw fill count | Gate 6, Test 2: real vs. redrawn fill dates, 3 measures | All three measures match within noise (e.g. 60+ day gap: 51.5% vs. 51.2%) | Does not survive — this is the core finding |
@@ -444,7 +468,6 @@ medication," is reliable in this file. This isn't unique to this dataset.
 Any similarly de-identified public claims file is likely to have the same
 limitation, since it's the same protection mechanism doing the same job.
 
-
 **A long gap between fills is not a reliable signal of a real pause or
 stop.** Gate 6 showed this is close to pure arithmetic, driven by how many
 fills someone has and over what span, not a genuine behavioral event.
@@ -460,10 +483,19 @@ person's actual behavior.** It's reliable enough to describe overall
 patterns in the file, like the dominance of 30-day fills, but not reliable
 enough to build a precise, per-person coverage calculation on top of.
 
-**Data from February 2010 onward should be treated with caution.** The
-decline identified in Part B and confirmed in Gate 4 means analysis
-windows extending past this point risk mistaking a data artifact for real
-patient behavior.
+**Only April 2008 through January 2010 is trustworthy for rates and levels.**
+The first three months of 2008 are under-populated, and 2010
+declines steadily from January to December (Gate 4). The upper edge is
+deliberately conservative: February 2010 is still above the 90% line, but
+nothing is lost by stopping at January 31. Earlier data is kept wherever a
+calculation needs to look back, but anything reported stays inside the
+window.
+
+**Year-level amounts for 2008 may not be comparable with 2009.**
+The annual
+reimbursement fields in the beneficiary file may be depressed in 2008 by
+the same thin early months. I haven't tested this, so until I have, I
+don't compare 2008 spending directly against 2009.
 
 **Chronic condition rates run consistently higher than real-world
 Medicare figures.** Any comparison against outside benchmarks needs to
@@ -487,8 +519,8 @@ rest on what the data has already proven it can support. The project's
 written plan was updated to reflect this, and the changes are summarized
 here rather than buried across six weeks of design documents.
 
-**Adherence and retention are not dead, one specific way of measuring
-them is.** The original plan leaned on a detailed, clinically standard
+**Adherence and retention are not dead, one specific way of measuring them is.**
+The original plan leaned on a detailed, clinically standard
 adherence measure called PDC, Proportion of Days Covered, which depends on
 trusting prescription length data at the individual level. Gate 6 showed
 that trust isn't warranted here. The project's primary metric moved to
@@ -500,8 +532,8 @@ underlying idea, that staying engaged with your medication looks like
 staying engaged with a subscription, is untouched. Only the precise way of
 measuring "still engaged" had to change.
 
-**The plan to compare two named drugs against each other is gone, and
-couldn't have survived on any similarly built dataset.** In its place, the
+**The plan to compare two named drugs against each other is gone, and couldn't have survived on any similarly built dataset.**
+In its place, the
 project now uses a technique called a plasmode simulation: build a real
 patient group with real characteristics from this file, then intentionally
 add a made-up treatment and a made-up effect where the true answer is
@@ -511,7 +543,8 @@ specifically because it proves the tools work correctly on realistic data,
 rather than producing a real-world finding that can't actually be trusted
 here anyway.
 
-**The prediction model shifted its story rather than its build.** It's
+**The prediction model shifted its story rather than its build.**
+It's
 still being built, and it's still aimed at the same underlying question
 of predicting who's likely to drop off. What changed is what it's honestly
 described as predicting. Since Gate 6 showed that timing gaps mostly
@@ -521,14 +554,15 @@ often someone fills things overall, and the write-up says so plainly
 rather than dressing that up as something more clinically dramatic than
 it is.
 
-**The analysis time window narrowed.** Combining the February 2010
-cutoff from Gate 4 with the standard requirements of a clean before-and-
-after study design, settled on beneficiaries with a relevant event between
-July 2008 and July 2009, with outcomes measured entirely before the data
-quality starts to break down.
+**The analysis time window narrowed at both ends.** Gate 4 puts the
+trustworthy period at April 2008 through January 2010: the first three
+months of 2008 are under-populated, and volume falls away steadily
+through 2010. Anything reported as a rate or a level stays inside that
+window, and outcomes for any later modelling are measured entirely before
+it closes. Earlier months are kept wherever a calculation needs a
+lookback.
 
-**Every one of these changes came with a plan for what to do if the
-underlying test had gone the other way**, decided before the tests were
+**Every one of these changes came with a plan for what to do if the underlying test had gone the other way**, decided before the tests were
 run, not after. That's worth stating plainly: nothing in this document is
 a project in crisis being patched together after the fact. It's a project
 that checked its assumptions before building on them, found two that
