@@ -638,6 +638,24 @@ expose a Week 5 issue: spells and coverage_end can extend past Jan 31,
 
 **Status:** Week 4 runbook fully closed. PR step dropped by decision
 (solo project, direct-to-main). Next: strategy check-in, then Week 5.
+
+---
+## 2026-09-28 — Correction: Gate 4 figures
+
+The Week 2 entry above (gate 4) says "Feb 2010 already 15% below the 2009
+plateau (1.349 vs 1.418 threshold)". That mixed two denominators: 1.349 is
+15% below neither figure it names, and 1.418 is the 90% threshold, not the
+plateau.
+
+Corrected, and normalised to a 30-day month so February's length can't pass
+for decline: the 2009 plateau is 1.554 fills per enrolled beneficiary per
+30 days. Feb 2010 is 93.0% of it, March 2010 (89.9%) is the first month under
+the 90% line, and Dec 2010 is 24.2%. At the front of the file, Apr 2008 is
+the first month above the line (analysis_start = 2008-04-01). The upper edge
+of the clean window stays at 2010-01-31, deliberately a month conservative.
+The decline conclusion is unchanged, but the evidence is now the twelve-month
+slide, not "already 15% below in February". See docs/fidelity_audit.md Part B.
+
 ---
 ## Template for future entries
 
