@@ -8,14 +8,15 @@ this module produces the numbers that document cites.
 """
 
 # Global imports
+import json
+import os
+from pathlib import Path
+
 import duckdb
+import matplotlib.pyplot as plt
 import numpy as np
 import polars as pl
 from scipy import stats
-import matplotlib.pyplot as plt
-import json
-from pathlib import Path
-import os
 
 DB_PATH = os.environ.get("CLAIMS_DB", "data/claims.duckdb")
 SEED = 7  # Like always, 007 is unavailable.
@@ -213,18 +214,33 @@ def gate4_monthly_plateau_threshold(con):
 
     monthly_fills = monthly_fills.with_columns(pl.col("month").dt.year().alias("year"))
     monthly_fills = monthly_fills.join(enrolled_per_year, left_on="year", right_on="source_year")
+
+    # Normalise to a 30-day month so February's 28 days can't masquerade as decline.
     monthly_fills = monthly_fills.with_columns(
-        (pl.col("n_fills") / pl.col("n_enrolled")).alias("fills_per_enrolled")
+        (
+            pl.col("n_fills") / pl.col("n_enrolled") / pl.col("month").dt.month_end().dt.day() * 30
+        ).alias("fills_per_enrolled")
     )
 
     plateau_2009 = monthly_fills.filter(pl.col("year") == 2009)["fills_per_enrolled"].mean()
     threshold = 0.90 * plateau_2009
+    monthly_fills = monthly_fills.sort("month").with_columns(
+        (100 * pl.col("fills_per_enrolled") / plateau_2009).alias("pct_of_plateau")
+    )
 
-    below_threshold = monthly_fills.filter(
+    first_breach = monthly_fills.filter(
         (pl.col("year") == 2010) & (pl.col("fills_per_enrolled") < threshold)
-    ).sort("month")
+    ).head(1)
 
-    first_breach = below_threshold.head(1)
+    # Same rule at the front: first 2008 month at or above the threshold.
+    first_ok_2008 = monthly_fills.filter(
+        (pl.col("year") == 2008) & (pl.col("fills_per_enrolled") >= threshold)
+    ).head(1)
+
+    pct_of_plateau = {
+        f"pct_of_plateau_{m:%Y_%m}": v
+        for m, v in zip(monthly_fills["month"], monthly_fills["pct_of_plateau"])
+    }
 
     return {
         "plateau_2009": plateau_2009,
@@ -236,6 +252,8 @@ def gate4_monthly_plateau_threshold(con):
         "dec_2010_value": monthly_fills.filter(pl.col("month") == pl.datetime(2010, 12, 1))[
             "fills_per_enrolled"
         ][0],
+        "analysis_start": f"{first_ok_2008['month'][0]:%Y-%m-%d}",
+        **pct_of_plateau,
     }
 
 
@@ -581,16 +599,18 @@ def main():
     print("=" * 60)
     g4 = gate4_monthly_plateau_threshold(con)
     results["gate4"] = g4
-    print(f"2009 plateau (mean fills/enrolled): {g4['plateau_2009']:.3f}")
+    print(f"2009 plateau (fills per enrolled beneficiary per 30 days): {g4['plateau_2009']:.3f}")
     print(f"90% threshold: {g4['threshold']:.3f}")
     print(
         f"First 2010 month below threshold: {g4['first_breach_month']} "
         f"({g4['first_breach_value']:.3f})"
     )
-    print(
-        f"December 2010 value (for reference): {g4['dec_2010_value']:.3f} "
-        f"({100*g4['dec_2010_value']/g4['plateau_2009']:.0f}% of plateau)"
-    )
+    print(f"Derived analysis_start (first 2008 month at/above threshold): {g4['analysis_start']}")
+    shown = {"2008_01", "2008_02", "2008_03", "2008_04", "2009_01", "2009_02"}
+    for key in sorted(k for k in g4 if k.startswith("pct_of_plateau_")):
+        ym = key.replace("pct_of_plateau_", "")
+        if ym.startswith("2010") or ym in shown:
+            print(f"  {ym}: {g4[key]:.1f}% of the 2009 plateau")
 
     # Gate 5 print block
     print("\n" + "=" * 60)
