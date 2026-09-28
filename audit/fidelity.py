@@ -207,7 +207,7 @@ def gate4_monthly_plateau_threshold(con):
     """).pl()
 
     enrolled_per_year = con.execute("""
-        SELECT CAST(source_year AS INTEGER) AS source_year, COUNT(DISTINCT DESYNPUF_ID) AS n_enrolled
+        SELECT source_year, COUNT(DISTINCT DESYNPUF_ID) AS n_enrolled
         FROM raw.beneficiary
         GROUP BY source_year
     """).pl()

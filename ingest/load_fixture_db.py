@@ -20,9 +20,15 @@ def main():
 
     tables = ["beneficiary", "inpatient", "outpatient", "pde", "carrier"]
     for table in tables:
+        # source_year is an integer in the real database; match that here.
+        replace = (
+            "REPLACE (CAST(source_year AS INTEGER) AS source_year)"
+            if table == "beneficiary"
+            else ""
+        )
         con.execute(f"""
             CREATE OR REPLACE TABLE raw.{table} AS
-            SELECT * FROM read_csv_auto('{SAMPLES_DIR}/{table}_sample.csv',
+            SELECT * {replace} FROM read_csv_auto('{SAMPLES_DIR}/{table}_sample.csv',
                                          header=true, all_varchar=true)
         """)
 
