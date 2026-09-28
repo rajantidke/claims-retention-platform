@@ -4,20 +4,55 @@ models:
   - name: stg_beneficiary
     description: >
       One row per beneficiary per year (2008-2010). Chronic condition flags
-      converted from source '1'/'2' coding to real booleans. See
-      docs/fidelity_audit.md for known limitations (chronic condition rates
-      run 1.6-2.4x higher than real Medicare).
+      converted from source '1'/'2' coding to real booleans via yn_flag;
+      anything outside '1'/'2' becomes null and fails the not_null tests.
+      See docs/fidelity_audit.md for known limitations (chronic condition
+      rates run 1.6-2.4x higher than real Medicare).
+      {{ doc('staging_conventions') }}
     columns:
       - name: beneficiary_id
-        data_tests:
-          - not_null
+        data_tests: [not_null]
       - name: source_year
         data_tests:
           - not_null
           - accepted_values:
               arguments:
                 values: [2008, 2009, 2010]
+      - name: sex_code
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: ['1', '2']
+      - name: has_esrd
+        data_tests: [not_null]
+      - name: has_alzheimers
+        data_tests: [not_null]
+      - name: has_heart_failure
+        data_tests: [not_null]
+      - name: has_chronic_kidney_disease
+        data_tests: [not_null]
+      - name: has_cancer
+        data_tests: [not_null]
+      - name: has_copd
+        data_tests: [not_null]
+      - name: has_depression
+        data_tests: [not_null]
+      - name: has_diabetes
+        data_tests: [not_null]
+      - name: has_ischemic_heart_disease
+        data_tests: [not_null]
+      - name: has_osteoporosis
+        data_tests: [not_null]
+      - name: has_ra_oa
+        data_tests: [not_null]
+      - name: has_stroke_tia
+        data_tests: [not_null]
     data_tests:
       - dbt_utils.equal_rowcount:
           arguments:
             compare_model: source('raw', 'beneficiary')
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - beneficiary_id
+              - source_year

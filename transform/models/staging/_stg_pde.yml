@@ -26,6 +26,9 @@ models:
               arguments:
                 min_value: 0
                 max_value: 365
+      - name: fill_date
+        data_tests:
+          - not_null
     data_tests:
       - dbt_utils.equal_rowcount:
           arguments:

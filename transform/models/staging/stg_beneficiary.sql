@@ -17,19 +17,24 @@ select
     cast("PLAN_CVRG_MOS_NUM" as integer)         as part_d_coverage_months,
 
 
-    ("BENE_ESRD_IND" = 'Y') as has_esrd,
-    -- Chronic condition flags: source uses 1=Yes, 2=No (NOT 0/1, see fidelity_audit.md)
-    ("SP_ALZHDMTA" = '1')  as has_alzheimers,
-    ("SP_CHF" = '1')       as has_heart_failure,
-    ("SP_CHRNKIDN" = '1')  as has_chronic_kidney_disease,
-    ("SP_CNCR" = '1')      as has_cancer,
-    ("SP_COPD" = '1')      as has_copd,
-    ("SP_DEPRESSN" = '1')  as has_depression,
-    ("SP_DIABETES" = '1')  as has_diabetes,
-    ("SP_ISCHMCHT" = '1')  as has_ischemic_heart_disease,
-    ("SP_OSTEOPRS" = '1')  as has_osteoporosis,
-    ("SP_RA_OA" = '1')     as has_ra_oa,
-    ("SP_STRKETIA" = '1')  as has_stroke_tia,
+    -- ESRD uses Y / 0 (codebook BEN-6), not 1/2
+    case when "BENE_ESRD_IND" = 'Y' then true
+         when "BENE_ESRD_IND" = '0' then false
+
+    end                           as has_esrd,
+
+    -- Chronic condition flags: 1 = Yes, 2 = No, via the yn_flag macro
+    {{ yn_flag('SP_ALZHDMTA') }}  as has_alzheimers,
+    {{ yn_flag('SP_CHF') }}       as has_heart_failure,
+    {{ yn_flag('SP_CHRNKIDN') }}  as has_chronic_kidney_disease,
+    {{ yn_flag('SP_CNCR') }}      as has_cancer,
+    {{ yn_flag('SP_COPD') }}      as has_copd,
+    {{ yn_flag('SP_DEPRESSN') }}  as has_depression,
+    {{ yn_flag('SP_DIABETES') }}  as has_diabetes,
+    {{ yn_flag('SP_ISCHMCHT') }}  as has_ischemic_heart_disease,
+    {{ yn_flag('SP_OSTEOPRS') }}  as has_osteoporosis,
+    {{ yn_flag('SP_RA_OA') }}     as has_ra_oa,
+    {{ yn_flag('SP_STRKETIA') }}  as has_stroke_tia,
 
     cast("MEDREIMB_IP" as double)   as ip_medicare_reimb_amount,
     cast("BENRES_IP" as double)     as ip_beneficiary_resp_amount,

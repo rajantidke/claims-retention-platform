@@ -604,6 +604,41 @@ check (the last open design question, deciding Module D's discontinuation
 target definition).
 
 ---
+## 2026-09-27 — Week 4 leftovers: staging tests tightened, Week 5 sanity checks
+
+**Staging gaps closed (found by re-reading the runbook, not by a failure)**
+- I had described staging as "matching the runbook exactly" when it
+  didn't: `stg_beneficiary` lacked the `(beneficiary_id, source_year)`
+  uniqueness test, sex-code `accepted_values`, and `not_null` on the
+  flags; `stg_pde` lacked `not_null` on `fill_date`.
+- The `not_null` test on `has_diabetes` could never have failed as first
+  written: `("SP_DIABETES" = '1')` turns any unexpected value into
+  `false`, not `null`. Replaced with a `yn_flag()` macro (1 -> true,
+  2 -> false, else null) so the test can actually catch a recode miss.
+  ESRD handled separately (Y / 0 per codebook BEN-6).
+- Result: 59/59 tests, and `not_null` passing on all 12 flags proves every
+  source value is inside the codebook's coding. Nothing computed earlier
+  changes. The old logic gave the same answers on this data.
+- Added `staging_conventions` docs block (`_staging.md`).
+
+**Week 5 sanity checks**
+- 93,919 beneficiaries (80.7%) have >=1 fill in the clean window.
+- June 2009 monthly active rate: 70.6% (56,462 / 79,938), denominator =
+  alive, full-year-Part-D members. Likely overstates the all-beneficiary
+  rate given the restricted denominator (unmeasured).
+- Spell lengths: p10/25/50/75/90/99 = 29/29/54/139/323/966 days, max
+  1,183, 35.9% single-fill spells. p10 = p25 = 29 is exactly what
+  single 30-day fills produce.
+
+**Mistake caught:** I told myself a spell longer than the ~700-day clean
+window meant a broken merge. Wrong: spells are intentionally unclipped
+(full 36 months + up to 90 days of supply = ~1,186 ceiling). It does
+expose a Week 5 issue: spells and coverage_end can extend past Jan 31,
+2010, so anything feeding Modules C/D must filter or clip explicitly.
+
+**Status:** Week 4 runbook fully closed. PR step dropped by decision
+(solo project, direct-to-main). Next: strategy check-in, then Week 5.
+---
 ## Template for future entries
 
 ## YYYY-MM-DD — Week N, Step X: < short description>
