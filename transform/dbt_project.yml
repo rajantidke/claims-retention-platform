@@ -12,8 +12,9 @@ clean-targets: ["target", "dbt_packages"]
 
 vars:
   # Every analysis boundary is config, never hardcoded in a model.
-  clean_window_end: '2010-01-31'   # Gate 4: Feb 2010 onward is unusable
-  study_start:      '2008-01-01'
+  study_start:      '2008-01-01'   # earliest data present; base tables and lookback
+  analysis_start:   '2008-04-01'   # first month at/above 90% of the 2009 plateau (Gate 4)
+  clean_window_end: '2010-01-31'   # conservative: Gate 4 first drops below 90% in Mar 2010
   gap_days: 60                     # discontinuation gap definition
   washout_days: 180                # new-user washout
 

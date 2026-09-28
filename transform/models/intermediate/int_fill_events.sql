@@ -9,7 +9,7 @@ select
     patient_pay_amount,
     total_rx_cost_amount,
 
-    fill_date <= cast('{{ var("clean_window_end") }}' as date)  as in_clean_window,
+    {{ in_clean_window('fill_date') }}                          as in_clean_window,
     days_supply = 0                                             as is_zero_days_supply,
 
     fill_date                                                   as coverage_start,
