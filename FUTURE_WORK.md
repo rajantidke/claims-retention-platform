@@ -46,3 +46,24 @@ established as unreliable on this data.
 Revisit if: (a) a future dataset with trustworthy days-supply/timing
 behavior replaces DE-SynPUF, or (b) PDC is ever promoted back to a primary
 metric for a specific sub-analysis with its own validation.
+
+
+## Washout-period sensitivity comparison (180 vs. 365 days)
+
+`washout_days` is already a project var (`transform/dbt_project.yml`), not
+hardcoded, so the new-user cohort definition can be rebuilt with a
+different washout period (e.g. 365 days instead of 180) by changing one
+line and rerunning `make build` — no SQL changes needed. What doesn't
+exist is a way to run both side by side and compare cohort composition or
+retention shape between them.
+
+Decided against building this now: it's a real sensitivity analysis, not
+a configuration option, and would mean a second cohort definition, more
+marts, and more to reconcile and explain, which is more scope than a v0.5
+warehouse-and-metrics milestone needs. `fct_cohort_retention`'s
+description notes the var is swappable; the actual side-by-side
+comparison is deferred here.
+
+Revisit if: a reviewer or later module specifically asks "how sensitive
+is the retention shape to the washout definition," since that's exactly
+the question this comparison would answer.
