@@ -739,7 +739,51 @@ Part 0 item.
 
 **Status:** Week 5, Part 0 fully closed. `make build` and `make build-ci`
 both green at 59/59. Next: Part 1, `fct_monthly_active`.
+
 ---
+## 2026-09-29 — Week 5, Part 1: fct_monthly_active
+
+**Build.** One row per beneficiary per month, left join from
+`int_member_months` to fills aggregated by `date_trunc('month', fill_date)`.
+`coalesce(f.n_fills, 0)` before deriving `is_active`, since a left join
+with no match gives `null`, not zero, and `null > 0` in SQL is neither
+true nor false. Built as a table per the marts materialization default.
+Deliberately keeps every month behind `in_clean_window` rather than
+filtering, since it's the base table the other rate/utilization marts
+read from.
+
+**A real column-loss bug found before the build even ran into it.** The
+§0.5 edit that added `has_full_year_part_ab` to `int_member_months`
+replaced the existing `has_full_year_part_d` line instead of adding
+beside it, and nothing caught it: that table had already been rebuilt and
+committed twice since, and all 59 tests passed both times, since nothing
+tests for a specific column's presence, only `not_null` on the two grain
+columns. It surfaced only when this mart tried to reference the missing
+column and dbt's binder error named it directly. Restored the line;
+confirmed via `distinct beneficiary_id where has_full_year_part_d` that
+the count is still 94,564, the same population as when the column was
+first built — so the earlier commits never produced a wrong number, they
+just silently carried a table with fewer columns than intended.
+
+**Numbers.** Active share, clean window (Apr 2008-Jan 2010), full-year
+Part D members: 72.4% (1,297,519 / 1,792,334 beneficiary-months). Close
+to, not identical to, June 2009's single-month 70.6% from Week 4 — a
+pooled multi-month rate and one month's rate aren't expected to match
+exactly, and the two are close enough to be reassuring. Both numbers now
+in `docs/metrics_reference.md`.
+
+**Test coverage gap worth naming.** No test in this project currently
+checks that a model has a specific expected column; only `not_null` on
+named columns already present. A model can silently lose a column and
+every test still passes, provided nothing downstream references it yet.
+Not fixing this now, just recording it as a real limitation of the
+current test suite.
+
+**Status:** `fct_monthly_active` built, 65/65 tests passing project-wide.
+Next: `fct_engagement_rate_monthly`.
+
+---
+
 ## Template for future entries
 
 ## YYYY-MM-DD — Week N, Step X: < short description>
