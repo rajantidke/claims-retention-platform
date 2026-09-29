@@ -27,7 +27,7 @@ select
 
     (bene.death_date is null or bene.death_date >= s.month_start)  as is_alive,
     (bene.part_d_coverage_months = 12)                             as has_full_year_part_d,
-    s.month_start <= cast('{{ var("clean_window_end") }}' as date) as in_clean_window
+    {{ in_clean_window('s.month_start') }}                         as in_clean_window
 
 from spine s
 left join {{ ref('stg_beneficiary') }} bene
