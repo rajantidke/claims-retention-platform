@@ -26,7 +26,8 @@ select
     s.month_year                                                   as source_year,
 
     (bene.death_date is null or bene.death_date >= s.month_start)  as is_alive,
-    (bene.part_d_coverage_months = 12)                             as has_full_year_part_d,
+    (bene.part_a_coverage_months = 12
+        and bene.part_b_coverage_months = 12)                      as has_full_year_part_ab,
     {{ in_clean_window('s.month_start') }}                         as in_clean_window
 
 from spine s
