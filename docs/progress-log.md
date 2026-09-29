@@ -657,6 +657,18 @@ The decline conclusion is unchanged, but the evidence is now the twelve-month
 slide, not "already 15% below in February". See docs/fidelity_audit.md Part B.
 
 ---
+## 2026-09-28 — Note for the fct_utilization_monthly entry (Week 5, Part 1)
+
+Checked before building the mart: does CLM_PMT_AMT repeat across a claim's
+two segments rather than split between them? No. For the 68 inpatient and
+10,975 outpatient claims with two segments, segment 1 and segment 2 have
+different sums and different averages in both tables (e.g. inpatient
+segment 1 averages $17,823.53, segment 2 averages $18,789.71). A plain
+sum() over both segments is correct; no deduplication needed. Query and
+full numbers to be folded into the real fct_utilization_monthly entry when
+that model is built.
+
+---
 ## Template for future entries
 
 ## YYYY-MM-DD — Week N, Step X: < short description>
