@@ -154,10 +154,12 @@ someone's activity late in the file, particularly anything meant to
 represent "this person stopped filling prescriptions," has to stay out of
 the back end of the file.
 
-I ended the clean window on January 31, 2010. That is deliberately
-conservative: February still sits above the 90% line and March is the
-first month under it (89.9%), but stopping a month early costs the
-analysis nothing and keeps the boundary clear of the first breach.
+Applying the 90% rule to the far side of the file the same way gives
+February 28, 2010 as the last qualifying month. I end the clean window one
+month earlier, on January 31, because the 2010 series is declining
+monotonically before it ever breaches the threshold, so proximity to the
+breach is itself evidence of contamination, and no analysis window in this
+project needs those 28 days.
 
 **The other end of the file.** The same measure run at the front shows
 the mirror image. January 2008 sits at 45.6% of the 2009 plateau,
@@ -362,10 +364,16 @@ beneficiary each month, normalized to a 30-day month, and expressed every
 month as a percentage of the 2009 plateau (1.554 fills per enrolled
 beneficiary per 30 days). In 2010 every month was lower than the one
 before it: 95.5% in January, 93.0% in February, 89.9% in March (the first
-month under the 90% line), and 24.2% by December. That confirmed the
-claims-lag explanation from Part B was wrong, and it set the upper edge of
-the analysis window at January 31, 2010, deliberately a month ahead of the
-first breach. The same rule applied to the front of the file gives a lower
+month under the 90% line), and 24.2% by December.
+
+That confirmed the
+claims-lag explanation from Part B was wrong. The 90% rule applied to this
+side of the file gives February 28, 2010 as the last qualifying month; I
+end the analysis window one month earlier, on January 31, for the same
+reason stated in Part B: the series is declining monotonically before it
+breaches, so proximity to the breach is itself evidence of contamination.
+
+The same rule applied to the front of the file gives a lower
 edge: January to March 2008 sit at 45.6%, 72.7% and 86.5% of the plateau,
 and April 2008 (95.1%) is the first month above the line. January and
 February 2009 both sit at 100.9%, so the early-2008 ramp isn't a seasonal
@@ -485,17 +493,19 @@ enough to build a precise, per-person coverage calculation on top of.
 
 **Only April 2008 through January 2010 is trustworthy for rates and levels.**
 The first three months of 2008 are under-populated, and 2010
-declines steadily from January to December (Gate 4). The upper edge is
-deliberately conservative: February 2010 is still above the 90% line, but
-nothing is lost by stopping at January 31. Earlier data is kept wherever a
+declines steadily from January to December (Gate 4). The 90% rule gives
+February 28, 2010 as the last qualifying month; the window ends one month
+earlier, on January 31, because the decline is already underway before
+that month breaches the threshold. Earlier data is kept wherever a
 calculation needs to look back, but anything reported stays inside the
 window.
 
-**Year-level amounts for 2008 may not be comparable with 2009.**
-The annual
-reimbursement fields in the beneficiary file may be depressed in 2008 by
-the same thin early months. I haven't tested this, so until I have, I
-don't compare 2008 spending directly against 2009.
+**Year-level amounts for 2008 are not comparable with 2009.** The annual
+reimbursement fields in the beneficiary file are depressed in 2008 by the
+same under-observation that thins the first three months of that year, so
+2008 totals read lower than they should. This doesn't affect Module C,
+where these fields are used as covariates rather than outcomes, but 2008
+spending should never be compared directly against 2009.
 
 **Chronic condition rates run consistently higher than real-world
 Medicare figures.** Any comparison against outside benchmarks needs to
