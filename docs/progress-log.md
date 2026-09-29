@@ -669,6 +669,77 @@ full numbers to be folded into the real fct_utilization_monthly entry when
 that model is built.
 
 ---
+## 2026-09-29 — Week 5, Part 0: bridge closed, Gate 4 renormalised
+
+**Second correction to Gate 4's clean-window wording.** The 2026-09-28
+correction entry above fixed the numbers but kept "conservative" with no
+stated rule for `clean_window_end`. Per strategy review: "conservative" invites "by
+how much, against what rule?" Fixed properly this time: the 90% rule
+applied symmetrically to the far side of the file gives Feb 28, 2010 as
+the last qualifying month; Jan 31 is used instead, one month tighter,
+because the 2010 series is already declining monotonically before it
+breaches the threshold, so proximity to the breach is itself evidence of
+contamination. Both numbers and the reason are now in
+`docs/fidelity_audit.md` (Part B, Part E, and Constraints — three
+instances, all reconciled to the same wording).
+
+**The argument against claims lag changed shape, not conclusion.** With
+February no longer the breach point (93.0% of plateau, clears the line),
+the case against claims lag now rests on the twelve-month monotonic
+decline (already -14% by April, 24.2% by December) rather than on
+February's depth. Run-out has a sharp elbow in the final 1-3 months of an
+extract and is flat before it; a year-long slide starting in January is
+harder to explain as ordinary lag than one deep month was.
+
+**2008 annual summary fields flagged as not comparable across years.**
+Same under-observation that thins Jan-Mar 2008 depresses the beneficiary
+file's annual reimbursement totals for that year. Covariate-only impact
+for Module C; 2008 spend must not be compared directly against 2009.
+Recorded in the audit's Constraints section.
+
+**Fixture database fixed at the source (§0.3).** `load_fixture_db.py` was
+storing `source_year` as text, the root cause of the earlier Gate 4
+`SchemaError` that got patched downstream with a `CAST`. Cast at load
+instead; removed the now-unnecessary `CAST` from
+`gate4_monthly_plateau_threshold`, confirmed `test_gate4_deterministic`
+still passes on the small database without it. Added a `build-ci`
+Makefile target; `dbt build --target ci` now gives `PASS=59`, same as the
+full database — the small database supports a full dbt build for the
+determinism suite for the first time.
+
+**Three boundaries, one macro file (§0.4).** `dbt_project.yml` gained
+`analysis_start` (2008-04-01) alongside `study_start` and
+`clean_window_end`. `transform/macros/clean_window.sql` adds
+`in_clean_window()`, `in_analysis_window()`, and `clip_to_clean_window()`
+(the last not yet used). Replaced the hand-written comparisons in both
+`int_fill_events` and `int_member_months` with `in_clean_window()`;
+checked each change against the old inline logic directly (0 rows
+disagreed in either model) before committing.
+
+**Denominator policy (§0.5).** Added `has_full_year_part_ab` to
+`int_member_months` (`part_a_coverage_months = 12 and
+part_b_coverage_months = 12`), alongside `has_full_year_part_d`. 97,112 of
+116,352 beneficiaries (83.5%) have a full A/B year in 2008 — a larger
+share than Part D typically shows, consistent with A/B being closer to
+universal coverage. `fct_utilization_monthly` will use A/B for medical
+amounts and Part D for rx, not Part D for both.
+
+**Segment payment check:** already logged above (2026-09-28 entry) —
+`CLM_PMT_AMT` differs across a claim's two segments rather than
+duplicating, so `sum()` is correct with no deduplication needed. Numbers
+also in `docs/metrics_reference.md`.
+
+**Retention pre-commit table (§0.6) correctly deferred to Part 1.**
+ Single endpoint (pooled month-6 retention), threshold
+`T = max(3pp, 0.15 × null_median_month6)`, both nulls and the threshold
+committed to `audit_results.json` before the real curve is computed.
+Belongs inside `fct_cohort_retention` (`audit/retention_null.py`), not a
+Part 0 item.
+
+
+**Status:** Week 5, Part 0 fully closed. `make build` and `make build-ci`
+both green at 59/59. Next: Part 1, `fct_monthly_active`.
+---
 ## Template for future entries
 
 ## YYYY-MM-DD — Week N, Step X: < short description>
