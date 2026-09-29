@@ -1,0 +1,18 @@
+version: 2
+
+models:
+  - name: fct_engagement_rate_monthly
+    description: >
+      One row per calendar month, within the analysis window (Apr 2008 -
+      Jan 2010). Two denominators reported side by side: n_enrolled_all
+      (every beneficiary that month) and n_enrolled_strict (only those with
+      a full year of Part D coverage that year). Month-level enrollment is
+      only identifiable for the strict population, which excludes roughly
+      30% of beneficiaries in a typical month (see strict_share); strict
+      rates therefore read high relative to the full population and
+      should never be quoted without n_enrolled_strict alongside them.
+    columns:
+      - name: month_start
+        data_tests:
+          - not_null
+          - unique

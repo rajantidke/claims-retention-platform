@@ -784,6 +784,45 @@ Next: `fct_engagement_rate_monthly`.
 
 ---
 
+## 2026-09-29 — Week 5, Part 1: fct_engagement_rate_monthly
+
+**Build.** One row per calendar month, filtered to the analysis window,
+aggregating `fct_monthly_active` into two denominators side by side:
+`n_enrolled_all`/`rate_all` (every beneficiary) and
+`n_enrolled_strict`/`rate_strict` (only those with a full year of Part D
+that year), plus `strict_share` so the exclusion can be quoted straight
+from the mart. This is the fix for the earlier complaint that the 18.7%
+exclusion figure understated the monthly reality — a reviewer now gets
+the real monthly share, not a beneficiary-level annual figure standing in
+for it.
+
+**A real bug caught by comparing against a known number, not by a failed test.** First build gave `rate_all` = 51.0% and, more tellingly,
+`n_enrolled_strict` = 80,486 for June 2009 — 548 more than the 79,938
+`docs/progress-log.md` already had on record from Week 4. All dbt tests
+passed regardless, since nothing checked the value against the earlier
+number, only that `month_start` was not-null and unique. The mart had no
+`is_alive` filter; Week 4's manual query did. The 548-person gap is
+beneficiaries with a full 2009 Part D year who had already died by June
+2009 and were still counting toward the denominator. Added `and is_alive`
+to the `where` clause. Rebuilt: `n_enrolled_strict` = 79,938 exactly,
+`rate_strict` = 70.6%, both matching Week 4 to the number. `fct_monthly_active`
+itself needed no equivalent fix — it deliberately carries `is_alive` as a
+column for downstream marts to filter on rather than filtering itself, per
+its own description.
+
+**Second time in two marts this exact bug shape has appeared**: build
+succeeds, every test passes, and the number is wrong until checked against
+something already known. Both times the same fix (an `is_alive` filter)
+and both times only caught by comparing against a number recorded earlier
+in this log, not by the test suite. Worth treating "does this new number
+match a previously recorded one" as a standing habit for every new mart in
+this project, not just a nice-to-have.
+
+**Status:** `fct_engagement_rate_monthly` built, 68/68 tests passing.
+Both new marts logged in `docs/metrics_reference.md`. Next:
+`fct_cohort_retention`.
+---
+
 ## Template for future entries
 
 ## YYYY-MM-DD — Week N, Step X: < short description>

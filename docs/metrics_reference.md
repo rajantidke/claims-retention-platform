@@ -14,3 +14,6 @@ A lookup table, not an explanation. If a number here disagrees with
 | Segment payment check: outpatient, 2-segment claims | seg 1 avg $1,368.95, seg 2 avg $1,352.17 — different, not duplicated | ad hoc query, 2026-09-28 | progress log, `fct_utilization_monthly` entry (pending) |
 | fct_monthly_active: active share, clean window, full-year Part D members | 72.4% (1,297,519 / 1,792,334) | ad hoc query, 2026-09-29 | progress log, `fct_monthly_active` entry (pending) |
 | int_member_months: beneficiaries with has_full_year_part_d at least once | 94,564 | ad hoc query, 2026-09-29 | matches the earlier 94,564 in `int_member_months` entry, 2026-09-27 |
+| fct_engagement_rate_monthly: Jun 2009, n_enrolled_strict | 79,938 | `transform/models/marts/fct_engagement_rate_monthly.sql` | progress log, `fct_engagement_rate_monthly` entry, 2026-09-29 |
+| fct_engagement_rate_monthly: Jun 2009, rate_strict | 70.6% | `transform/models/marts/fct_engagement_rate_monthly.sql` | progress log, `fct_engagement_rate_monthly` entry, 2026-09-29 |
+| fct_engagement_rate_monthly: Jun 2009, n_enrolled_all / rate_all | 115,580 / 51.3% | `transform/models/marts/fct_engagement_rate_monthly.sql` | progress log, `fct_engagement_rate_monthly` entry, 2026-09-29 |
