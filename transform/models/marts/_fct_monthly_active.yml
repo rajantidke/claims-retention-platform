@@ -1,0 +1,26 @@
+version: 2
+
+models:
+  - name: fct_monthly_active
+    description: >
+      One row per beneficiary per calendar month, 2008-01 through 2010-12.
+      Deliberately keeps every month behind in_clean_window rather than
+      filtering, since this is the base table every other rate/utilization
+      mart reads from. Downstream marts filter to in_analysis_window
+      themselves.
+    columns:
+      - name: beneficiary_id
+        data_tests:
+          - not_null
+      - name: month_start
+        data_tests:
+          - not_null
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - beneficiary_id
+              - month_start
+      - dbt_utils.equal_rowcount:
+          arguments:
+            compare_model: ref('int_member_months')
