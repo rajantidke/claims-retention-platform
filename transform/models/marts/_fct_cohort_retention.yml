@@ -1,0 +1,38 @@
+version: 2
+
+models:
+  - name: fct_cohort_retention
+    description: >
+      One row per entry cohort per months_since_entry, Sep 2008 through
+      Jul 2009 entry months. Entry: a beneficiary's first fill (or first
+      after a washout_days gap) landing between analysis_start +
+      washout_days and 2009-07-31. NOTE: the Sep 2008 cohort only has 3
+      eligible entry days (28th-30th) since the derived floor lands at
+      month's end, so it is a genuine partial-month cohort of 163 people
+      against 1,656-2,305 for every other month — real, not a bug, but
+      expect it to be visibly noisier on any retention chart. months_since_entry
+      reaches clean_window_end for every cohort, so later-entering cohorts
+      have a shorter observable tail than earlier ones.
+    columns:
+      - name: entry_month
+        data_tests:
+          - not_null
+      - name: months_since_entry
+        data_tests:
+          - not_null
+      - name: calendar_month
+        data_tests:
+          - not_null
+      - name: retention_rate
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                max_value: 100
+                inclusive: true
+    data_tests:
+      - dbt_utils.unique_combination_of_columns:
+          arguments:
+            combination_of_columns:
+              - entry_month
+              - months_since_entry

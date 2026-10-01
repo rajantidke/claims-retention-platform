@@ -51,6 +51,31 @@ person_month_grid as (
         entry_month,
         unnest(months_list) as months_since_entry
     from months_available
+),
+
+grid_with_activity as (
+    select
+        pmg.beneficiary_id,
+        pmg.entry_month,
+        pmg.months_since_entry,
+        (pmg.entry_month + interval (pmg.months_since_entry) month)::date as calendar_month,
+        coalesce(ma.is_active, false) as is_active
+
+    from person_month_grid pmg
+    left join {{ ref('fct_monthly_active') }} ma
+        on pmg.beneficiary_id = ma.beneficiary_id
+        and ma.month_start = (pmg.entry_month + interval (pmg.months_since_entry) month)::date
 )
 
-select * from person_month_grid
+select
+    entry_month,
+    months_since_entry,
+    calendar_month,
+    count(*)                                         as cohort_size,
+    sum(case when is_active then 1 else 0 end)       as n_active,
+    100.0 * sum(case when is_active then 1 else 0 end)
+        / count(*)                                   as retention_rate
+
+from grid_with_activity
+group by 1, 2, 3
+order by 1, 2

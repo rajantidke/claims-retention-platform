@@ -875,6 +875,62 @@ collapse the grid to cohort-level retention rates, then the retention
 pre-commit table and null overlay from Step 0.6.
 
 ---
+## 2026-10-01 — Week 5, Part 1 (cont.): fct_cohort_retention, aggregation and schema
+
+**Aggregation.** Collapsed the person-month grid (previous entry) to
+cohort-level rates: `entry_month`, `months_since_entry`, `calendar_month`,
+`cohort_size`, `n_active`, `retention_rate`, joined against
+`fct_monthly_active` with `coalesce(ma.is_active, false)` so a calendar
+month outside `fct_monthly_active`'s own range counts as not active, same
+pattern used in `fct_monthly_active` itself. Verified month 0 is exactly
+100% for the September 2008 cohort (163/163) before trusting anything
+else, since month-0 activity is true by construction of what "entry" means - any value other than 100% there would mean the join itself was broken.
+
+**First real retention numbers produced by the project.** September 2008
+cohort: 100% at month 0, 36.2% at month 1, 30.1% at month 6 — a steep
+initial drop followed by a flatter tail. Consistent with, not contradicted
+by, Gate 6's finding that discontinuation gaps in this file are close to
+arithmetic rather than behavioral: the entry-cohort population is, by
+construction, people on their first fill after a long gap or ever, which
+skews toward lower-intensity fillers whose single 30-day fill naturally
+produces a gap past one calendar month. Whether this drop is arithmetic
+(matching a redrawn null) or something beyond intensity is exactly what
+the retention pre-commit and null overlay (still to build) exist to
+determine — not concluded here.
+
+**September 2008 cohort size (163) investigated and explained, not a bug.**
+Checked cohort sizes across all 11 entry months: September is 163,
+every other month (Oct 2008 - Jul 2009) runs 1,656 to 2,305. Cause: the
+derived entry floor (2008-09-28, from Gate 4's analysis_start + washout
+rule) lands three days before month's end, so September has only 3
+eligible entry days against a full 30-31 for every other month. Decision:
+retain it as a real, smaller, partial-month cohort rather than exclude or
+pad the window — it's accurate data, not an artifact — but document it
+plainly in the model description, since a reader comparing cohort curves
+should know September will read noisier purely from its size, not from
+anything behaviorally different about that cohort. This finding, along
+with the retention numbers above, belongs in the eventual Module F
+report(s) once those are written — logged here as the evidentiary source
+for that later work, not as the final write-up itself.
+
+**Schema file written for the first time for this mart**
+(`_fct_cohort_retention.yml`): `not_null` on the three key columns,
+`dbt_utils.accepted_range` on `retention_rate` (0-100 inclusive, same
+defensive pattern as the uncapped-PDC test planned for a later mart —
+should never fail by definition, and if it does, the aggregation broke),
+and `dbt_utils.unique_combination_of_columns` on `(entry_month,
+months_since_entry)`. All pass: 74/74 tests project-wide.
+
+**Status:** `fct_cohort_retention`'s structural build (entry cohort,
+person-month grid, cohort-level aggregation, schema, tests) is complete.
+Still missing from the runbook's §1.3: the retention pre-commit itself
+(pooled month-6 endpoint, threshold as a function of the null, committed
+to `audit_results.json` before the real curve is computed), both Gate-7-
+style nulls computed in Python, and the cross-implementation test
+confirming the Python-computed grid matches this dbt mart. That work
+belongs in `audit/retention_null.py`, not in dbt, and is next.
+
+---
 
 ## Template for future entries
 

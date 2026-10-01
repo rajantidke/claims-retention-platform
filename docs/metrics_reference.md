@@ -20,3 +20,7 @@ A lookup table, not an explanation. If a number here disagrees with
 | fct_cohort_retention: cohort size (new-user entries, Sep 2008 - Jul 2009) | 20,260 beneficiaries | `transform/models/marts/fct_cohort_retention.sql` | progress log, `fct_cohort_retention` entry, 2026-09-30 |
 | fct_cohort_retention: entry window, earliest/latest entry_month | 2008-09-01 to 2009-07-01 | `transform/models/marts/fct_cohort_retention.sql` | progress log, `fct_cohort_retention` entry, 2026-09-30 |
 | fct_cohort_retention: person-month grid, max months_since_entry | 16 (earliest cohort, Sep 2008, to clean_window_end) | `transform/models/marts/fct_cohort_retention.sql` | progress log, `fct_cohort_retention` entry, 2026-09-30 |
+| fct_cohort_retention: month-0 retention (all cohorts, by construction) | 100.0% | `transform/models/marts/fct_cohort_retention.sql` | progress log, `fct_cohort_retention` entry, 2026-09-30 |
+| fct_cohort_retention: Sep 2008 cohort size (partial month, 3 eligible entry days) | 163 | `transform/models/marts/fct_cohort_retention.sql` | progress log, `fct_cohort_retention` entry, 2026-09-30 |
+| fct_cohort_retention: cohort sizes, Oct 2008 - Jul 2009 | 1,656 to 2,305 per month | `transform/models/marts/fct_cohort_retention.sql` | progress log, `fct_cohort_retention` entry, 2026-09-30 |
+| fct_cohort_retention: Sep 2008 cohort, retention at month 1 / month 6 | 36.2% / 30.1% | `transform/models/marts/fct_cohort_retention.sql` | progress log, `fct_cohort_retention` entry, 2026-09-30 |
