@@ -931,6 +931,61 @@ confirming the Python-computed grid matches this dbt mart. That work
 belongs in `audit/retention_null.py`, not in dbt, and is next.
 
 ---
+## 2026-10-01 — Week 5, Part 1 (cont.): retention_null.py, cross-implementation check and month-6 endpoint
+
+**Started `audit/retention_null.py`** per Step 0.6: independently
+reproduces `fct_cohort_retention`'s entry-cohort logic in Python/Polars,
+rather than reading the dbt mart, so the two codebases can be checked
+against each other. `load_real_fill_events` pulls the same population
+`int_fill_events` already filters to (non-zero-days-supply, inside the
+analysis window), `assign_entry_cohorts` reimplements the same washout-gap
+new-user logic as the SQL, using `shift().over()` for the per-beneficiary
+previous-fill lookup, the Polars equivalent of the SQL's `lag() over
+(partition by ...)`.
+
+**Cross-implementation check passed on the first real comparison**:
+Python's independently-computed cohort is exactly 20,260 people, entry
+months September 2008 through July 2009, matching the dbt mart precisely.
+Genuine confirmation that the cohort logic is correct, not just that one
+implementation is internally consistent with itself.
+
+**A real bug caught in the month-6 retention calculation, and a second, more concerning one alongside it.** First version of
+`compute_month6_retention` used a left join on `(beneficiary_id, month6)`
+against `(beneficiary_id, fill_month)` and then checked
+`fill_month.is_not_null()` to determine activity. This returned 0% active
+out of 20,260, not plausible given the dbt mart already showed 30.1%
+retention at month 6 for the September cohort alone. Cause: when a left
+and right join key share the same values and get matched, Polars drops
+the right-side key column entirely rather than keeping it under a
+suffixed name — `suffix` only applies to colliding *non-key* columns.
+`fill_month` never existed in the joined frame. The function's own
+fallback, `if "fill_month" in joined.columns else 0`, meant this failed
+silently rather than raising an error — the second issue, worth naming on
+its own: a silent fallback to zero hides exactly the kind of bug it should
+surface, the same category of concern as an uncapped PDC test. Fixed by
+switching to `how="semi"` — keeps only matching rows from the left frame
+directly, no join columns to look for afterward, nothing to accidentally
+miss.
+
+**Verified before trusting the fixed result**: confirmed the latest
+cohort's month-6 (July 2009 entry + 6 months = January 2010) genuinely
+falls on or before `clean_window_end` (Jan 31, 2010), so `n_eligible` =
+20,260 (the full cohort, no filtering) is correct by design, not a sign
+the eligibility filter silently failed — the July 31, 2009 entry-window
+ceiling was specifically chosen so every cohort member's month-6 would be
+measurable.
+
+**Result: pooled month-6 retention, real data — 23.1% (4,690 / 20,260).**
+Plausible against the September cohort's own 30.1% (one cohort among
+eleven feeding into a pooled average, not expected to match exactly).
+
+**Status:** cross-implementation check passing, real month-6 endpoint
+computed and verified. Next: the two nulls (empirical, primary/
+conservative; uniform, secondary), the threshold `T = max(3pp, 0.15 ×
+null_median_month6)`, committing both nulls and the threshold to
+`reports/audit_results.json` before looking at how the real number
+compares, then the decision table itself.
+---
 
 ## Template for future entries
 

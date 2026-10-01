@@ -24,3 +24,5 @@ A lookup table, not an explanation. If a number here disagrees with
 | fct_cohort_retention: Sep 2008 cohort size (partial month, 3 eligible entry days) | 163 | `transform/models/marts/fct_cohort_retention.sql` | progress log, `fct_cohort_retention` entry, 2026-09-30 |
 | fct_cohort_retention: cohort sizes, Oct 2008 - Jul 2009 | 1,656 to 2,305 per month | `transform/models/marts/fct_cohort_retention.sql` | progress log, `fct_cohort_retention` entry, 2026-09-30 |
 | fct_cohort_retention: Sep 2008 cohort, retention at month 1 / month 6 | 36.2% / 30.1% | `transform/models/marts/fct_cohort_retention.sql` | progress log, `fct_cohort_retention` entry, 2026-09-30 |
+| retention_null.py: cohort size, cross-implementation check (Python vs. dbt) | 20,260 (exact match), Sep 2008 - Jul 2009 | `audit/retention_null.py` | progress log, `retention_null.py` entry, 2026-09-30 |
+| retention_null.py: pooled month-6 retention, real data | 23.1% (4,690 / 20,260) | `audit/retention_null.py` | progress log, `retention_null.py` entry, 2026-09-30 |
