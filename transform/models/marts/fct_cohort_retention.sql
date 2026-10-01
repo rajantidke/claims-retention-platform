@@ -29,9 +29,28 @@ entry_window as (
 first_entry as (
     select
         beneficiary_id,
-        min(entry_date) as entry_date
+        date_trunc('month', min(entry_date))::date as entry_month
     from entry_window
     group by 1
+),
+
+months_available as (
+    select
+        beneficiary_id,
+        entry_month,
+        generate_series(
+            0,
+            datediff('month', entry_month, date '{{ var("clean_window_end") }}')
+        ) as months_list
+    from first_entry
+),
+
+person_month_grid as (
+    select
+        beneficiary_id,
+        entry_month,
+        unnest(months_list) as months_since_entry
+    from months_available
 )
 
-select * from first_entry
+select * from person_month_grid

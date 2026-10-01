@@ -17,3 +17,6 @@ A lookup table, not an explanation. If a number here disagrees with
 | fct_engagement_rate_monthly: Jun 2009, n_enrolled_strict | 79,938 | `transform/models/marts/fct_engagement_rate_monthly.sql` | progress log, `fct_engagement_rate_monthly` entry, 2026-09-29 |
 | fct_engagement_rate_monthly: Jun 2009, rate_strict | 70.6% | `transform/models/marts/fct_engagement_rate_monthly.sql` | progress log, `fct_engagement_rate_monthly` entry, 2026-09-29 |
 | fct_engagement_rate_monthly: Jun 2009, n_enrolled_all / rate_all | 115,580 / 51.3% | `transform/models/marts/fct_engagement_rate_monthly.sql` | progress log, `fct_engagement_rate_monthly` entry, 2026-09-29 |
+| fct_cohort_retention: cohort size (new-user entries, Sep 2008 - Jul 2009) | 20,260 beneficiaries | `transform/models/marts/fct_cohort_retention.sql` | progress log, `fct_cohort_retention` entry, 2026-09-30 |
+| fct_cohort_retention: entry window, earliest/latest entry_month | 2008-09-01 to 2009-07-01 | `transform/models/marts/fct_cohort_retention.sql` | progress log, `fct_cohort_retention` entry, 2026-09-30 |
+| fct_cohort_retention: person-month grid, max months_since_entry | 16 (earliest cohort, Sep 2008, to clean_window_end) | `transform/models/marts/fct_cohort_retention.sql` | progress log, `fct_cohort_retention` entry, 2026-09-30 |

@@ -821,6 +821,59 @@ this project, not just a nice-to-have.
 **Status:** `fct_engagement_rate_monthly` built, 68/68 tests passing.
 Both new marts logged in `docs/metrics_reference.md`. Next:
 `fct_cohort_retention`.
+
+---
+## 2026-09-30 — Week 5, Part 1: fct_cohort_retention, entry cohort and person-month grid
+
+**Entry cohort.** New-user definition: first fill after a `washout_days`
+gap (or a beneficiary's first-ever fill), restricted to entries between
+`analysis_start + washout_days` and 2009-07-31. The lower bound derives to
+2008-09-28, three days tighter than the runbook's literal "Oct 1": used
+the derived date rather than rounding to the literal, since the project's
+own standard is to state the actual rule, not an approximation of it.
+Verified standalone before wiring into dbt: 99,393 distinct beneficiaries
+produce at least one entry candidate, exactly matching the count of
+beneficiaries with any coverage spell from Week 4 — nobody with zero
+qualifying fills slipped through. Final cohort after the window filter and
+taking each person's first qualifying entry: 20,260 beneficiaries,
+earliest and latest entry dates land exactly on the derived bounds
+(2008-09-28, 2009-07-31).
+
+**Person-month grid.** One row per beneficiary per month since their own
+entry, built with `generate_series` + `unnest`, reaching from each
+cohort's entry month to `clean_window_end`. First draft of this CTE had a
+real scoping bug (an alias, `ma`, referenced before it was defined, and a
+column reused as both a list name and a scalar name across CTEs), caught
+before running, not after.
+
+**Two assumptions corrected while verifying the grid, neither a bug in the
+SQL:**
+- `generate_series(0, n)` in DuckDB is inclusive on both ends, producing
+  n+1 values, not n. Expected a 15-month span to produce 15 values; it
+  correctly produces 16 (0 through 15). No fix needed — the SQL was
+  right, the mental check of it was wrong.
+- Assumed the earliest cohort month was October 2008, since the derived
+  entry floor (Sep 28, 2008) is close to October. It isn't: `entry_month`
+  truncates to the *start* of the entry date's calendar month, and Sep 28
+  truncates to Sep 1, not Oct 1. The earliest cohort is therefore
+  September 2008, one month earlier than assumed, which is also why the
+  grid's `max(months_since_entry)` across all cohorts is 16, not 15 —
+  traced and confirmed against `datediff('month', '2008-09-01',
+  '2010-01-31')` = 16 before accepting it as correct.
+
+Both assumption errors were caught by checking the grid's output against
+independent arithmetic rather than trusting dbt's green build, the same
+discipline that caught the two `is_alive` bugs in the previous two marts.
+Worth stating plainly: the entry cohort window, by calendar month, is
+September 2008 through July 2009, not October as the runbook's original
+literal phrasing implied — any later documentation or resume language
+describing this window should say September.
+
+**Status:** entry-cohort and person-month-grid logic verified standalone
+(not yet run through `dbt build`, no schema file or tests yet). Next:
+collapse the grid to cohort-level retention rates, then the retention
+pre-commit table and null overlay from Step 0.6.
+
 ---
 
 ## Template for future entries
