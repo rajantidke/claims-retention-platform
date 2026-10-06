@@ -1,0 +1,31 @@
+version: 2
+
+models:
+  - name: fct_utilization_monthly
+    description: >
+      One row per calendar month, within the analysis window. Sums
+      inpatient, outpatient, and carrier payment amounts. Uses the
+      strict Part A/B full-year denominator (n_enrolled_strict) for
+      pmpm_strict, not Part D, since this is a medical-cost metric and
+      drug coverage is a separate enrollment question. Segment-level
+      duplication was checked before building this (see progress log,
+      2026-09-28): inpatient and outpatient claims split across two
+      segments carry genuinely different payment amounts, confirmed
+      again at the staging layer before this model was written, so a
+      plain sum() across segments is correct with no deduplication
+      needed.
+    columns:
+      - name: month_start
+        data_tests:
+          - not_null
+          - unique
+      - name: total_amount
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                min_value: 0
+                inclusive: true
+    data_tests:
+      - dbt_utils.equal_rowcount:
+          arguments:
+            compare_model: ref('fct_engagement_rate_monthly')

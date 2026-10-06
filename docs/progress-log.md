@@ -1096,6 +1096,44 @@ what the curve shows. Next: `fct_utilization_monthly` (Step 1.4), the
 segment-duplication check from Part 0 is already done and ready to use.
 
 ---
+## 2026-10-06 — Week 5, Part 1 (cont.): fct_utilization_monthly
+
+**Build.** One row per calendar month, summing inpatient, outpatient, and
+carrier payment amounts from their staging models, filtered to the
+analysis window. Uses the strict Part A/B full-year denominator for
+pmpm_strict (§0.5's ruling: medical cost needs Part A/B coverage, not
+Part D, which is a separate drug-only enrollment). Denominator CTE filters
+on is_alive, applying the lesson from the fct_engagement_rate_monthly bug
+proactively this time rather than discovering it again.
+
+**Segment-duplication check reconfirmed at the staging layer before
+building.** Part 0 (2026-09-28) confirmed CLM_PMT_AMT differs, not
+duplicates, across a claim's two segments at the raw level. Before writing
+this model, checked the same property holds at the staging layer, where
+the actual sum() in this mart operates: stg_inpatient has exactly 136 rows
+across 68 multi-segment claims (2 rows each), stg_outpatient has 21,950
+rows across 10,975 (also exactly 2 each): both segments present and
+distinct, nothing deduplicated between raw and staging, confirming a plain
+sum() here is correct.
+
+**Numbers.** June 2009: n_enrolled_strict (Part A/B) = 103,361, notably
+higher than fct_engagement_rate_monthly's Part D strict denominator
+(79,938) for the same month, consistent with Part 0's finding that
+full-year Part A/B coverage (83.5% of beneficiaries) is closer to
+universal than full-year Part D. pmpm_strict = $401.80, a plausible
+combined inpatient/outpatient/carrier per-member-per-month figure for
+this population.
+
+**Tests.** 79/79 passing project-wide, including an equal_rowcount check
+against fct_engagement_rate_monthly (both marts should produce exactly
+one row per month in the same analysis window) and a non-negative range
+check on total_amount.
+
+**Status:** `fct_utilization_monthly` built, tested, and sanity-checked.
+Next: `fct_pdc_monthly`, the last mart planned for this week, demoted per
+the fidelity audit to a documented-unreliable metric rather than a
+trusted one, then the clean-window test (Step 1.6) and Gate 7.
+---
 ## Template for future entries
 
 ## YYYY-MM-DD — Week N, Step X: < short description>
