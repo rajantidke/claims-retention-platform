@@ -1048,6 +1048,54 @@ then, look at the real number against the band
 and apply the decision table.
 
 ---
+## 2026-10-05 — Week 5, Part 1 (cont.): retention_null.py, 20-redraw band and result
+
+**Fixed one more bug before running the band.** `run_null_band`'s first
+draft called `compute_month6_retention(fills, cohorts)`, passing the
+original real `fills` while using the null's `cohorts` — a mismatch that
+would have checked null cohort membership against real activity. Caught
+before running at scale by checking a single iteration first (cohort
+20,345, rate 23.16%, matching the earlier manual single-draw check
+exactly) and fixing the call to `compute_month6_retention(redrawn,
+cohorts)`.
+
+**20-redraw band run.** 24.4 seconds total, no performance issue —
+confirms the earlier per-beneficiary-loop slowdown (first attempt at
+`build_empirical_null`, logged 2026-09-30) was specific to that
+implementation, not an inherent cost of this kind of redraw. Null A'
+rates across 20 seeded redraws: 22.99% to 23.90%, median 23.36%. Real
+pooled month-6 retention: 23.15%. Cohort-specific low-fill-count share
+(entrants with <3 fills, unchanged by Null A'): 5,431 of 20,260 (26.8%) —
+notably higher than the whole-population figure (13.2%), as expected
+since the entry cohort is specifically selected for having a long
+pre-entry gap, which correlates with lower overall fill counts.
+
+**Result: real retention falls inside the null band.** D (null median
+minus real) = 0.21 percentage points, against threshold T = 3.50pp
+(max(3pp, 15% of null median)). Decision per the pre-committed table:
+**arithmetic** — month-6 retention shape is explained by fill count and
+observation span, not by evidence of a real dropout process beyond
+intensity. Consistent with Gate 6's original finding (discontinuation
+gaps are close to pure arithmetic) now extended to a second, independent
+question (does entry-cohort retention specifically show the same
+pattern) with its own purpose-built null.
+
+**Written to reports/audit_results.json** under a new `retention_null`
+key, alongside the nine existing gate-result keys from `audit/fidelity.py,
+confirmed none of the existing keys were overwritten. Full 20-value
+arrays (rates, cohort sizes) preserved in the file for anyone who wants
+to inspect the band directly rather than trust the summary statistics
+alone.
+
+
+**Status:** `fct_cohort_retention`'s full Step 0.6 obligation is complete
+— mart built and tested, cross-implementation check passing, null
+redesigned correctly after review, band run, threshold and result written
+to disk before the mart's own description or README claim anything about
+what the curve shows. Next: `fct_utilization_monthly` (Step 1.4), the
+segment-duplication check from Part 0 is already done and ready to use.
+
+---
 ## Template for future entries
 
 ## YYYY-MM-DD — Week N, Step X: < short description>

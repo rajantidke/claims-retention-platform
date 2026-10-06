@@ -42,8 +42,10 @@ Disclosure: the real month-6 value (23.1%) was known when the null's design
 was finalised. The design change was driven by the span-confounding argument
 from Gate 6 Test 2, which does not refer to that value, and the threshold
 was fixed as a formula before any null value existed.
-
 """
+
+import json
+from pathlib import Path
 
 import duckdb
 import numpy as np
@@ -120,16 +122,14 @@ def compute_month6_retention(fills, cohorts, clean_window_end="2010-01-31"):
 
 
 def build_empirical_null(fills, seed=SEED):
-    """Redraw each beneficiary's fill dates from the pooled real fill-date
-    distribution, keeping their own fill count fixed. Conservative: if
-    real churn is common, the pooled distribution is itself depleted near
-    the window's end, so this null partially absorbs the signal it tests.
+    """Null B (context only). Redraw each beneficiary's fill dates from the
+    pooled real fill-date distribution, keeping their own fill count fixed.
+    Also destroys observation span, not just within-span timing -- kept as
+    context so the gap between this and Null A' quantifies how much of
+    retention shape is attributable to span structure alone.
 
     Vectorized: one single draw of len(fills) dates from the pool,
-    assigned back onto the original beneficiary_id column in order. This
-    keeps each beneficiary's fill count exactly fixed (same number of
-    rows per beneficiary as the real data) while randomizing which dates
-    they get, without looping per beneficiary.
+    assigned back onto the original beneficiary_id column in order.
     """
     rng = np.random.default_rng(seed)
     pool = fills["fill_date"]
@@ -140,10 +140,11 @@ def build_empirical_null(fills, seed=SEED):
 
 
 def build_span_anchored_null(fills, seed=SEED):
-    """Redraw each beneficiary's INTERIOR fill dates uniformly within their
-    own observation span, holding their first and last fill fixed. Fill
-    count and span survive; only within-span timing is destroyed. Same
-    logic as Gate 6 Test 2, vectorized here rather than looped per person.
+    """Null A' (governs the ruling). Redraw each beneficiary's INTERIOR
+    fill dates uniformly within their own observation span, holding their
+    first and last fill fixed. Fill count and span survive; only
+    within-span timing is destroyed. Same logic as Gate 6 Test 2,
+    vectorized here rather than looped per person.
 
     Entrants with fewer than 3 fills have no interior dates to redraw and
     pass through unchanged (identity rows) -- this is the effective-power
@@ -177,18 +178,99 @@ def build_span_anchored_null(fills, seed=SEED):
     return result
 
 
+def run_null_band(fills, n_redraws=20, seed=SEED):
+    """Run Null A' n_redraws times with different seeds, collecting
+    cohort size and month-6 retention rate from each draw. This is the
+    band -- the pre-commit requires writing its summary to
+    audit_results.json before the real number is treated as a result."""
+    results = []
+    for i in range(n_redraws):
+        redrawn = build_span_anchored_null(fills, seed=seed + i)
+        cohorts = assign_entry_cohorts(redrawn)
+        n_elig, n_active = compute_month6_retention(redrawn, cohorts)
+        rate = 100 * n_active / n_elig
+        results.append(
+            {
+                "seed": seed + i,
+                "cohort_size": cohorts.height,
+                "month6_eligible": n_elig,
+                "month6_active": n_active,
+                "month6_rate": rate,
+            }
+        )
+    return results
+
+
+def run_and_save(con, n_redraws=20, seed=SEED):
+    """Runs the full retention-null check and writes results to
+    reports/audit_results.json under the 'retention_null' key, alongside
+    the gate results already written there by audit/fidelity.py."""
+    fills = load_real_fill_events(con)
+
+    real_cohorts = assign_entry_cohorts(fills)
+    real_elig, real_active = compute_month6_retention(fills, real_cohorts)
+    real_rate = 100 * real_active / real_elig
+
+    fill_counts = fills.group_by("beneficiary_id").agg(pl.len().alias("n_fills"))
+    cohort_counts = real_cohorts.join(fill_counts, on="beneficiary_id", how="left")
+    low_fill_n = cohort_counts.filter(cohort_counts["n_fills"] < 3).height
+
+    null_results = run_null_band(fills, n_redraws=n_redraws, seed=seed)
+    null_rates = [r["month6_rate"] for r in null_results]
+    null_sizes = [r["cohort_size"] for r in null_results]
+
+    null_median = sorted(null_rates)[len(null_rates) // 2]
+    T = max(3.0, 0.15 * null_median)
+    D = null_median - real_rate
+
+    if abs(D) < T:
+        decision = "arithmetic"
+    elif D >= T:
+        decision = "real_dropout_beyond_intensity"
+    else:
+        decision = "investigate"
+
+    summary = {
+        "real_cohort_size": real_cohorts.height,
+        "real_month6_rate": real_rate,
+        "real_cohort_low_fill_count": low_fill_n,
+        "real_cohort_low_fill_share": 100 * low_fill_n / real_cohorts.height,
+        "null_a_prime_rates": null_rates,
+        "null_a_prime_cohort_sizes": null_sizes,
+        "null_a_prime_median_month6": null_median,
+        "null_a_prime_min": min(null_rates),
+        "null_a_prime_max": max(null_rates),
+        "threshold_T": T,
+        "D": D,
+        "decision": decision,
+    }
+
+    output_path = Path("reports/audit_results.json")
+    if output_path.exists():
+        existing = json.loads(output_path.read_text())
+    else:
+        existing = {}
+
+    existing["retention_null"] = summary
+    output_path.write_text(json.dumps(existing, indent=2, default=str))
+
+    return summary
+
+
 if __name__ == "__main__":
     con = duckdb.connect(DB_PATH, read_only=True)
-    fills = load_real_fill_events(con)
-    print(f"Loaded {fills.height:,} fills for {fills['beneficiary_id'].n_unique():,} beneficiaries")
-
-    cohorts = assign_entry_cohorts(fills)
-    print(f"Cohort size: {cohorts.height:,}")
-    print(f"Entry months: {cohorts['entry_month'].min()} to {cohorts['entry_month'].max()}")
-
-    n_eligible, n_active = compute_month6_retention(fills, cohorts)
+    summary = run_and_save(con)
+    print(f"Real cohort size: {summary['real_cohort_size']:,}")
+    print(f"Real month-6 rate: {summary['real_month6_rate']:.2f}%")
     print(
-        f"Month-6 eligible: {n_eligible:,}, active: {n_active:,}, rate: {100 * n_active / n_eligible:.1f}%"
+        f"Real cohort, <3 fills: {summary['real_cohort_low_fill_count']:,} "
+        f"({summary['real_cohort_low_fill_share']:.1f}%)"
     )
-
+    print(f"Null A' median: {summary['null_a_prime_median_month6']:.2f}%")
+    print(
+        f"Null A' range: {summary['null_a_prime_min']:.2f}% to {summary['null_a_prime_max']:.2f}%"
+    )
+    print(f"Threshold T: {summary['threshold_T']:.2f}pp")
+    print(f"D: {summary['D']:.2f}pp")
+    print(f"Decision: {summary['decision']}")
     con.close()
