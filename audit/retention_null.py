@@ -139,6 +139,44 @@ def build_empirical_null(fills, seed=SEED):
     return fills.select("beneficiary_id").with_columns(pool.gather(idx).alias("fill_date"))
 
 
+def build_span_anchored_null(fills, seed=SEED):
+    """Redraw each beneficiary's INTERIOR fill dates uniformly within their
+    own observation span, holding their first and last fill fixed. Fill
+    count and span survive; only within-span timing is destroyed. Same
+    logic as Gate 6 Test 2, vectorized here rather than looped per person.
+
+    Entrants with fewer than 3 fills have no interior dates to redraw and
+    pass through unchanged (identity rows) -- this is the effective-power
+    caveat from the pre-commit docstring, reported separately.
+    """
+    rng = np.random.default_rng(seed)
+    span = fills.group_by("beneficiary_id").agg(
+        pl.col("fill_date").min().alias("first_date"),
+        pl.col("fill_date").max().alias("last_date"),
+        pl.len().alias("n_fills"),
+    )
+    tagged = (
+        fills.join(span, on="beneficiary_id", how="left")
+        .with_columns(pl.col("fill_date").rank("ordinal").over("beneficiary_id").alias("row_rank"))
+        .with_columns(
+            (pl.col("row_rank") == 1).alias("is_first"),
+            (pl.col("row_rank") == pl.col("n_fills")).alias("is_last"),
+        )
+    )
+    span_days = (tagged["last_date"] - tagged["first_date"]).dt.total_days()
+    u = rng.random(tagged.height)
+    offset_days = (u * (span_days + 1)).floor().cast(pl.Int32)
+    redrawn_interior_date = tagged["first_date"] + pl.duration(days=offset_days)
+
+    result = tagged.with_columns(
+        pl.when(pl.col("is_first") | pl.col("is_last"))
+        .then(pl.col("fill_date"))
+        .otherwise(redrawn_interior_date)
+        .alias("fill_date_new")
+    ).select("beneficiary_id", pl.col("fill_date_new").alias("fill_date"))
+    return result
+
+
 if __name__ == "__main__":
     con = duckdb.connect(DB_PATH, read_only=True)
     fills = load_real_fill_events(con)

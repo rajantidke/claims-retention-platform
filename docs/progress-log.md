@@ -986,7 +986,68 @@ null_median_month6)`, committing both nulls and the threshold to
 `reports/audit_results.json` before looking at how the real number
 compares, then the decision table itself.
 ---
+## 2026-10-05 — Week 5, Part 1 (cont.): retention_null.py, null redesign and Null A' built
 
+**Null redesign, per review, before any band was drawn.** The first
+empirical null (pooled i.i.d. draw across the whole file) was sent for
+review alongside a single-draw result (null cohort 19,159 vs. real
+20,260, month-6 15.6% vs. real 23.1%) and a concern: drawing each fill
+independently from the pooled distribution destroys each beneficiary's
+own observation span, not just within-span timing, conflating two
+different things. Review agreed: span is a known, undisputed property
+(people genuinely differ in when they start and stop filling), so a null
+that also scrambles span tests a question nobody is asking and is biased
+toward making real retention look artificially higher than the null by
+construction — exactly the artifact suspected. New design: Null A'
+(span-anchored, governs the ruling) holds each beneficiary's first and
+last fill fixed, redraws only the interior — the same logic as Gate 6
+Test 2. The original pooled draw is kept as Null B, context only, and the
+gap between A' and B becomes a measurable "how much of retention shape is
+just span" result rather than being discarded. A calendar-shift
+alternative was considered and rejected (preserves gap structure almost
+entirely, near-zero power, logged in FUTURE_WORK.md) — not reproduced
+here since it never became committed design.
+
+**Pre-commit written and committed before any redraw band existed**
+(commit `74fa6f3`): primary endpoint (pooled month-6 retention), both
+nulls, the effective-power caveat (entrants with <3 fills are unchanged by
+A', report the share), the ≥4-fill secondary comparison, the threshold
+formula `T = max(3pp, 0.15 x null_A'_median_month6)`, the full decision
+table, and an explicit disclosure that the real month-6 value (23.1%) was
+already known when the null's design changed — logged plainly rather than
+reasoned away, since the design change was driven by an argument
+(span-confounding, precedented by Gate 6 Test 2) that never references
+that number, and the threshold was fixed as a formula beforehand.
+
+**`build_span_anchored_null` built and verified at full scale.** For each
+beneficiary, first and last fill in the analysis window are held fixed;
+interior fills (if any) are redrawn uniformly within that span, allowing
+duplicate dates on the same day (consistent with Gate 6 Test 2 and with
+real same-day double-fills being possible). Vectorized: one `rank` per
+beneficiary to identify first/last rows, one batch uniform draw for every
+interior row, `pl.when/then/otherwise` to keep first/last untouched.
+Verified twice, on 500 beneficiaries and on the full 93,588 (3,875,700
+fills): row count preserved both times, and a direct check that every
+single beneficiary's first and last date is bit-for-bit unchanged — 0
+mismatches at both scales. Full-population run: 1.61 seconds.
+
+**Low-fill-count caveat measured**: 12,362 of 93,588 beneficiaries
+(13.2%, whole population, not yet restricted to the entry cohort
+specifically) have fewer than 3 fills and are therefore unchanged by the
+A' redraw — they have no interior to scramble. The cohort-specific figure,
+which is what the pre-commit actually calls for, is still to be computed
+once the redrawn fills are run back through `assign_entry_cohorts` and
+`compute_month6_retention`.
+
+**Status:** Null A' built and verified standalone. Still to do: run
+redrawn fills through the existing cohort-assignment and month-6
+functions (same pipeline already proven correct for the real data and for
+Null B), compute the cohort-specific low-fill-count share, run 20
+redraws for the band, write everything to `reports/audit_results.json`,
+then, look at the real number against the band
+and apply the decision table.
+
+---
 ## Template for future entries
 
 ## YYYY-MM-DD — Week N, Step X: < short description>
