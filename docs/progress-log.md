@@ -1199,6 +1199,55 @@ built and tested, the retention null overlay run and written to
 `audit_results.json`, the clean-window boundary enforced by test. Next:
 Part 2, Gate 7 (terminal stopping), the last open design question in the
 project, then Part 3 (charts, README, v0.5 tag).
+
+---
+## 2026-10-06 — Week 5, Part 2: Gate 7, population and real statistic
+
+**Started `audit/gate7_terminal_stop.py`**, the last open design question
+per the runbook. Gate 6 Test 2 anchored each beneficiary's first and last
+fill, so it tested timing *within* an observation span; it never tested
+whether the *end* of that span — the last fill happening well before
+clean_window_end — looks like a real stop rather than people simply
+running out of window to be observed in. Gate 7 is specifically that
+question. Population: alive through clean_window_end, full-year Part D
+coverage in *both* 2008 and 2009 (the two full years actually inside the
+clean window, not three — 2010 is excluded by the same reasoning that
+set clean_window_end in the first place), at least one fill inside the
+clean window. Statistic: share with a trailing gap (clean_window_end
+minus last fill date) of 180+ days.
+
+**A real bug caught on the first run, population came back as 0.** The
+"alive at window end" condition compared `month_start = date
+'2010-01-31'`, but `int_member_months`'s month spine (built from
+`generate_series` stepping by whole months) only ever contains first-of-
+month dates — the 31st never appears, so the comparison could never
+match anything, silently zeroing out the entire population via the
+`intersect` chain. Traced by checking each of the three population
+conditions separately before combining them (the "alive" condition
+alone returned 0; the two full-year-Part-D conditions returned 61,870 and
+80,486, confirming those were fine in isolation). Fixed by truncating
+`clean_window_end` to its own month at query time
+(`date_trunc('month', date '{CLEAN_WINDOW_END}')::date`) rather than
+hardcoding a second date string, so the comparison stays correct
+automatically if `clean_window_end` is ever changed.
+
+**Result.** Population: 59,223 beneficiaries (smaller than either single-
+year full-Part-D count, as expected from intersecting three conditions).
+Real share with a trailing gap >= 180 days: 2.2%. Genuinely low, which
+makes sense given the population was specifically selected for having
+reliable, recent coverage — whether 2.2% is itself higher or lower than
+pure chance would produce (given fill counts and window lengths) is
+exactly what the two nulls, not yet built, will determine.
+
+**Status:** population and real statistic verified. Next: the two nulls
+(empirical, primary/conservative, drawing from the pooled fill-date
+distribution over the trimmed window; uniform, secondary), both reading
+`analysis_start` from the var rather than a hardcoded date, per the
+runbook's §2 design, then the pre-committed decision table (real exceeding
+both nulls by >=1.25x and >=2pp -> real churn; nulls disagreeing -> report
+both, take the conservative branch; otherwise -> low engagement, labelled
+honestly).
+
 ---
 
 ## Template for future entries
