@@ -1331,6 +1331,91 @@ pattern has been applied correctly in one project.
 
 ---
 
+## 2026-10-07 — Week 5, Part 2: Gate 7 decision, and a real upstream bug found via PDC
+
+**Gate 7 decision, per review.** The pre-committed rule (real exceeds
+both nulls by >=1.25x AND >=2pp) was questioned before being applied:
+both nulls landed around 1.2%, and a fixed 2pp absolute floor against
+that small a baseline is a much stricter bar in relative terms than the
+same 2pp would be against a larger null — the same scale problem the
+retention threshold was built to avoid. Sent for review with the full
+numbers. Ruling: the floor stays, deliberately, because the two
+thresholds in this project do different jobs — the retention threshold
+decides what a *descriptive chart* says, Gate 7 decides what *Module D's
+primary prediction target* is, and a target-selection decision needs a
+prevalence bar as well as a signal bar, which the retention chart does
+not. Independent check (not relying on the pre-commitment's own
+authority): real 2.21% is 1,311 of 59,216; null median ~1.19% is ~705;
+the excess is ~610 people, about 1% of the population. Building Module D
+on that as "churn" would mean training on ~600 informative positives
+against intensity-correlated noise — a worse artifact than the one
+already being reported. **Module D's target is confirmed as <=2 active
+months of 6** (low engagement, not churn).
+
+**The finding is real and worth keeping, even though the branch is "low
+engagement."** Real (2.21%) sits outside both 20-redraw bands (1.13-1.26%
+and 1.12-1.22%) at ~1.87x the null — detectable, not noise. Per review:
+"terminal stopping is detectable but rare... the effect is real and
+clears the detection threshold, but is too rare to support a primary
+prediction target." This goes in the audit as Gate 7's actual finding,
+not collapsed into a bare "no churn" label.
+
+**Still to do on Gate 7 itself:** the bounded sensitivity sweep (recompute
+real vs. Null A at 90/120/180/270 days, check the ~1.8-1.9x ratio holds
+across all four or is specific to 180 — reported as descriptive, branch
+already decided at 180 per the pre-commit), the population caveat (full-
+year Part D in both years restricts this to the most continuously
+enrolled beneficiaries, so 2.21% is a floor on terminal stopping in the
+general population, not an estimate of it — must be stated explicitly),
+and writing the whole result to reports/audit_results.json.
+
+**A real, separate bug found while checking the PDC cap per review's
+housekeeping note.** Review asked whether fct_pdc_monthly's per-person
+PDC cap (`least(1.0, covered_days / days_in_month)`) was hiding a merge
+defect. Checked directly: 9 beneficiary-months have a RAW, uncapped
+covered-days ratio exceeding 1.0, meaning the per-person cap *is* firing,
+not just sitting unused. Traced to one example (beneficiary
+636172F35DFB8B4B, April 2009): two of that person's coverage spells
+genuinely overlap in calendar time (spell 4: Apr 5 - May 24 2009; spell
+5: Apr 25 2009 - Sep 28 2010) — `int_coverage_spells` (built Week 4)
+should never produce two overlapping spells for the same beneficiary,
+since its whole purpose is merging overlapping coverage into
+non-overlapping continuous spells. Checked scope: 6 beneficiaries total
+(of 99,393 with any spell) have at least one overlapping spell pair —
+narrow, not systemic. Likely cause, not yet confirmed: the original
+gaps-and-islands logic compares each fill's coverage_start only against
+the single running MAX(coverage_end) seen so far, which can miss a case
+where a later fill's coverage starts before an still-open spell's own
+end date (plausibly a long 90-day fill overlapping a separate, shorter
+concurrent fill).
+
+**Decision: pause here, diagnose and fix properly next session**, rather
+than patch downstream in fct_pdc_monthly at the end of a long session.
+The per-person PDC cap stays in place for now (it IS doing real
+masking for these 9 beneficiary-months, but removing it without fixing
+the real upstream cause would just surface wrong PDC values rather than
+correct ones). metrics_reference.md also needs updating before the next
+numbers are logged (per review: it's currently stale — population
+59,223/real 2.2% superseded by the analysis_start bug fix to
+59,216/2.21%, and the single-draw null values superseded by the 20-redraw
+bands — "update before the next entry... but only if it's updated in the
+same commit as the number that changed").
+
+**Status: Gate 7's core result and Module D's target are decided and
+confirmed, but Gate 7 is not fully closed** — the sensitivity sweep,
+audit_results.json write-up, and audit doc writeup (as its own Gate 7
+section per the runbook) remain. Separately, a real, narrow but genuine
+defect in int_coverage_spells (Week 4) is confirmed and scoped (6
+beneficiaries) but not yet fixed. Next session: diagnose the spell-merge
+logic properly, fix it, re-verify every downstream model that reads
+int_coverage_spells (fct_pdc_monthly at minimum, and re-check whether
+Gate 7's own trailing-gap calculation — which does not use
+int_coverage_spells, it reads int_fill_events directly — is unaffected,
+likely yes but worth confirming), update metrics_reference.md's stale
+entries in the same pass, then finish Gate 7 and move to Part 3.
+
+---
+
 
 ## Template for future entries
 

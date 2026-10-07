@@ -53,6 +53,7 @@ def load_gate7_population(con):
 
             from main_intermediate.int_fill_events
             where not is_zero_days_supply
+                and fill_date >= date '2008-04-01'
                 and in_clean_window
             group by 1
         )
@@ -136,6 +137,23 @@ def build_null_b_trailing_gaps(
         .dt.total_days()
         .alias("trailing_gap_days")
     )
+
+
+def run_gate7_bands(con, n_redraws=20, seed=SEED):
+    """Run both Gate 7 nulls across n_redraws seeded replicates, collecting
+    the share with a 180+ day trailing gap from each. This is the band --
+    required before the real statistic is treated as a result."""
+    pop = load_gate7_population(con)
+    pool = load_pooled_fill_dates(con)
+
+    shares_a, shares_b = [], []
+    for i in range(n_redraws):
+        null_a = build_null_a_trailing_gaps(pop, pool, seed=seed + i)
+        null_b = build_null_b_trailing_gaps(pop, seed=seed + i)
+        shares_a.append(100 * (null_a["trailing_gap_days"] >= GAP_DAYS).mean())
+        shares_b.append(100 * (null_b["trailing_gap_days"] >= GAP_DAYS).mean())
+
+    return pop, shares_a, shares_b
 
 
 if __name__ == "__main__":
