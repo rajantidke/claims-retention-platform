@@ -29,3 +29,4 @@ A lookup table, not an explanation. If a number here disagrees with
 | retention_null.py: beneficiaries with <3 fills, whole population (unchanged by Null A') | 12,362 / 93,588 (13.2%) | `audit/retention_null.py` | progress log, `retention_null.py` entry, 2026-09-30 |
 | retention_null.py: real vs. Null A' month-6, 20 redraws, decision | real 23.15%, null median 23.36% (range 22.99-23.90%), T=3.50pp, D=0.21pp, "arithmetic" | `audit/retention_null.py`, `reports/audit_results.json` | progress log, `retention_null.py` entry, 2026-10-01 |
 | fct_utilization_monthly: Jun 2009, n_enrolled_strict (Part A/B) / pmpm_strict | 103,361 / $401.80 | `transform/models/marts/fct_utilization_monthly.sql` | progress log, `fct_utilization_monthly` entry, 2026-10-01 |
+| fct_pdc_monthly: Jun 2009, n_with_spell / avg_pdc / max_pdc | 70,124 / 0.879 / 1.0 (correctly capped) | `transform/models/marts/fct_pdc_monthly.sql` | progress log, `fct_pdc_monthly` entry, 2026-10-01 |

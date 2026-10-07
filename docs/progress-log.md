@@ -1096,6 +1096,7 @@ what the curve shows. Next: `fct_utilization_monthly` (Step 1.4), the
 segment-duplication check from Part 0 is already done and ready to use.
 
 ---
+
 ## 2026-10-06 — Week 5, Part 1 (cont.): fct_utilization_monthly
 
 **Build.** One row per calendar month, summing inpatient, outpatient, and
@@ -1133,6 +1134,55 @@ check on total_amount.
 Next: `fct_pdc_monthly`, the last mart planned for this week, demoted per
 the fidelity audit to a documented-unreliable metric rather than a
 trusted one, then the clean-window test (Step 1.6) and Gate 7.
+
+---
+
+## 2026-10-06 — Week 5, Part 1 (cont.): fct_pdc_monthly, last mart of the week
+
+**Build.** One row per calendar month, computing Proportion of Days
+Covered from `int_coverage_spells` overlapped against each calendar
+month a spell touches. A spell can span any number of months (no
+hardcoded limit, joined against a month spine and filtered to actual
+overlap, the same pattern as `int_member_months`), with the
+`least(...)/greatest(...) + 1` overlap formula applied separately per
+spell-month pair.
+
+**A real type bug caught before running at scale, verified by hand first.** `month_start + interval 1 month - interval 1 day` (intended to
+compute a month's last day) returns a `TIMESTAMP` in DuckDB, not a
+`DATE`, adding an interval to a date always promotes it. Comparing that
+against a `DATE` column, then subtracting, produced a type combination
+DuckDB has no `+` function for, caught via `BinderException` on the
+first standalone test, not silently. Fixed by casting the whole
+expression to `::date` everywhere it's used. Verified the fix on one
+real three-month spell (Dec 7 2008 – Feb 26 2009) by hand before trusting
+it: December 25 days, January 31, February 26, summing to exactly the
+spell's real 82-day length.
+
+**PDC capping, two different things, not conflated.** Per-beneficiary-
+month `pdc` is capped at 1.0 with `least(1.0, ...)`: a legitimate
+ceiling, since two overlapping spells covering the same calendar day
+should never double-count that day. The aggregate `max_pdc` in the final
+monthly output is left uncapped and tested with
+`dbt_utils.accepted_range(max_value=1.0)`, per the runbook, if this
+*aggregate* ever exceeded 1.0, that would mean a real bug in the overlap
+or spell-merge logic, which capping would hide rather than catch. Test
+passed: max_pdc = 1.0 exactly, never exceeded, across every month
+checked.
+
+**Numbers.** June 2009: 70,124 beneficiaries with a spell, avg_pdc =
+0.879, max_pdc = 1.0 (correctly capped, not exceeded). Model description
+states plainly, per the fidelity audit's Gate 6 Test 1 finding, that this
+number is computed for pipeline completeness and portability, not
+interpretable as real clinical adherence on this dataset — a high,
+stable PDC here reflects how coverage spells get merged and summed, not
+genuine medication-taking behavior.
+
+**Status:** all 5 Week 5 marts now built and tested (83/83 project-wide):
+`fct_monthly_active`, `fct_engagement_rate_monthly`, `fct_cohort_retention`
+(with the completed retention-null overlay), `fct_utilization_monthly`,
+`fct_pdc_monthly`. Next: the clean-window test (Step 1.6), then Gate 7,
+then Part 3 (charts, README, v0.5 tag).
+
 ---
 ## Template for future entries
 

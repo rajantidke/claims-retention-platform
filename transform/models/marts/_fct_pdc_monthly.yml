@@ -1,0 +1,30 @@
+version: 2
+
+models:
+  - name: fct_pdc_monthly
+    description: >
+      One row per calendar month, within the analysis window. Proportion
+      of Days Covered (PDC), computed from int_coverage_spells overlapped
+      against each calendar month. Computed for pipeline completeness and
+      portability; NOT interpretable as a real adherence signal on this
+      dataset, because days supply is decoupled from actual fill timing
+      (Gate 6 Test 1, docs/fidelity_audit.md) -- a high, stable average
+      PDC here reflects how coverage spells get merged and summed, not
+      genuine clinical adherence. max_pdc is intentionally uncapped at
+      the aggregate level: if it ever exceeds 1.0, that signals a real
+      bug in the overlap or spell-merge logic, since no beneficiary can
+      be covered more than 100% of a month's days. Per-beneficiary-month
+      pdc values are capped at 1.0 (two overlapping spells covering the
+      same day should not double-count days), which is a legitimate
+      ceiling, not the same concern as capping the aggregate.
+    columns:
+      - name: month_start
+        data_tests:
+          - not_null
+          - unique
+      - name: max_pdc
+        data_tests:
+          - dbt_utils.accepted_range:
+              arguments:
+                max_value: 1.0
+                inclusive: true
