@@ -15,6 +15,8 @@ Real trailing gap = clean_window_end - last_fill_date.
 Statistic: share of the population with a trailing gap >= 180 days.
 """
 
+import datetime
+
 import duckdb
 import numpy as np
 import polars as pl
@@ -103,6 +105,34 @@ def build_null_a_trailing_gaps(population, pool, seed=SEED):
     )
     return result.with_columns(
         (pl.lit(CLEAN_WINDOW_END).str.to_date() - pl.col("last_fill_date"))
+        .dt.total_days()
+        .alias("trailing_gap_days")
+    )
+
+
+def build_null_b_trailing_gaps(
+    population, analysis_start="2008-04-01", clean_window_end=CLEAN_WINDOW_END, seed=SEED
+):
+    """Null B (secondary): for each person, keep their real fill COUNT
+    fixed, draw that many dates UNIFORMLY (not from the empirical pool)
+    across the trimmed window, and take the max as their null
+    last-fill-date. Same fill-count-preserving principle as Null A,
+    applied from the start this time."""
+    rng = np.random.default_rng(seed)
+    start = pl.Series([analysis_start]).str.to_date()[0]
+    end = pl.Series([clean_window_end]).str.to_date()[0]
+    window_days = (end - start).days
+
+    null_last_fill = []
+    for n in population["n_fills"].to_list():
+        offsets = rng.integers(0, window_days + 1, size=n)
+        null_last_fill.append(start + datetime.timedelta(days=int(offsets.max())))
+
+    result = population.select("beneficiary_id", "n_fills").with_columns(
+        pl.Series("last_fill_date", null_last_fill)
+    )
+    return result.with_columns(
+        (pl.lit(clean_window_end).str.to_date() - pl.col("last_fill_date"))
         .dt.total_days()
         .alias("trailing_gap_days")
     )

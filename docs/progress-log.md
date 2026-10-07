@@ -1298,6 +1298,39 @@ as final — same discipline as the retention overlay.
 
 ---
 
+## 2026-10-06 — Week 5, Part 2 (cont.): Gate 7 Null B, built correctly from the start
+
+**Null B (uniform, secondary) built applying the fill-count-preserving lesson from the start**, rather than repeating the mistake a third time
+in one session. For each person, keep real fill count fixed, draw that
+many dates uniformly across the trimmed window (not from the empirical
+pool, a flat distribution instead), take the max as the null
+last-fill-date, same principle as the corrected Null A, different
+source distribution.
+
+**Single-draw result: 1.2%**, matching Null A's corrected result exactly.
+Two differently-constructed nulls: one from the real pooled fill-date
+distribution, one from a flat uniform distribution; landing on the same
+number is a reassuring sign the result is stable, not an artifact of
+either null's specific construction.
+
+**One inline code smell introduced and then cleaned up in the same session**: first draft of `build_null_b_trailing_gaps` used
+`__import__("datetime").timedelta(...)` inline to avoid a naming
+collision, rather than a normal top-level `import datetime` — flagged as
+bad style immediately, fixed before moving on. Verified the cleanup
+didn't change the result (reran, still 1.2%).
+
+**Status:** both nulls built, verified, and in agreement on a single
+draw. Neither result counts as final yet: no band, no decision table
+applied, nothing written to audit_results.json. Next: run both nulls
+across 20 (or per-spec N) redraws each, compute the bands, apply the
+pre-committed decision table (real exceeding both nulls by >=1.25x and
+>=2pp -> real churn; nulls disagreeing -> report both, conservative
+branch; otherwise -> low engagement), write everything to
+reports/audit_results.json before treating the comparison as a result, same discipline as the retention overlay, now the third time this
+pattern has been applied correctly in one project.
+
+---
+
 
 ## Template for future entries
 
