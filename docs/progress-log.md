@@ -1249,6 +1249,55 @@ both, take the conservative branch; otherwise -> low engagement, labelled
 honestly).
 
 ---
+## 2026-10-06 — Week 5, Part 2 (cont.): Gate 7 Null A, design flaw caught and fixed
+
+**A second instance of the same flaw already caught once already.**
+First version of `build_null_a_trailing_gaps` drew one random date per
+person from the pooled fill-date distribution and called it their null
+"last fill date", completely disconnected from how many fills that
+person actually had. Result: an implausible 73.3% of the population
+showing a 180+ day trailing gap under this null, against the real
+population's 2.2%, a huge, suspicious gap in the wrong direction (null
+showing far *more* apparent churn than reality). Traced to the mechanism:
+drawing one date uniformly across a ~22-month window, independent of fill
+count, gives even a person with 40 real fills a high chance of landing
+early in the window by pure luck, since the draw has no connection to how
+often they actually filled. This is the same shape of error as the first
+retention-overlay null (2026-09-30 entry), ignoring fill count while
+scrambling timing, caught here before it was treated as a result, not
+after.
+
+**Fix: keep each person's real fill count fixed.** `load_gate7_population`
+extended to also return each beneficiary's `n_fills` inside the trimmed
+window. Rebuilt Null A to draw `n_fills` dates from the pool per person
+(with replacement) and take the *max* as their null last-fill-date:
+mirroring how a real last fill is whichever of someone's real fills
+happened latest. A person with few fills in a long window is genuinely
+more likely to have their last one land earlier by chance; this null now
+reproduces that correctly instead of erasing it.
+
+**Same dtype trap hit a second time while fixing it, same fix applied.**
+`rng.choice()` on a numpy-converted copy of the date pool
+(`pool.to_numpy()`) produced an `Object`-dtype array that `pl.Series`
+couldn't cast, the identical error class hit twice earlier tonight in
+`retention_null.py`. Fixed the same way: `pool.gather(idx)` on indices
+drawn from `rng.integers()`, staying inside Polars' typed column the
+whole way through rather than routing through a numpy object array at
+any point.
+
+**Corrected single-draw result: Null A share with trailing gap >= 180 days = 1.2%**, against real 2.2%, now in the same plausible
+neighborhood as reality, not an order of magnitude apart. Not yet a
+result (single draw, no band, Null B not built), but confirms the
+corrected design is sound before building further on top of it.
+
+**Status:** Null A rebuilt and verified correct. Next: Null B (uniform
+over the trimmed window, secondary), then the band/replicates for both,
+the pre-committed decision table, and writing the result to
+`reports/audit_results.json` before treating any real-vs-null comparison
+as final — same discipline as the retention overlay.
+
+---
+
 
 ## Template for future entries
 

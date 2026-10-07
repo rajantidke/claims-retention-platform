@@ -32,3 +32,4 @@ A lookup table, not an explanation. If a number here disagrees with
 | fct_pdc_monthly: Jun 2009, n_with_spell / avg_pdc / max_pdc | 70,124 / 0.879 / 1.0 (correctly capped) | `transform/models/marts/fct_pdc_monthly.sql` | progress log, `fct_pdc_monthly` entry, 2026-10-01 |
 | gate7_terminal_stop.py: population (alive, full-year Part D 2008+2009, >=1 fill) | 59,223 beneficiaries | `audit/gate7_terminal_stop.py` | progress log, `gate7_terminal_stop.py` entry, 2026-10-01 |
 | gate7_terminal_stop.py: real trailing gap >= 180 days | 2.2% of population | `audit/gate7_terminal_stop.py` | progress log, `gate7_terminal_stop.py` entry, 2026-10-01 |
+| gate7_terminal_stop.py: Null A, single draw, trailing gap >= 180 days (corrected design) | 1.2% (vs. real 2.2%) | `audit/gate7_terminal_stop.py` | progress log, `gate7_terminal_stop.py` entry, 2026-10-01 |
