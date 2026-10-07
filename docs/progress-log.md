@@ -1184,6 +1184,23 @@ genuine medication-taking behavior.
 then Part 3 (charts, README, v0.5 tag).
 
 ---
+## 2026-10-06 — Week 5, Part 1 close: clean-window test
+
+Added `assert_no_dates_past_clean_window.sql`, a Jinja-looped singular
+test checking `fct_engagement_rate_monthly`, `fct_cohort_retention`,
+`fct_utilization_monthly`, and `fct_pdc_monthly` for any date past
+`clean_window_end`. `fct_monthly_active` deliberately excluded, since it's
+the base table that intentionally keeps every month behind flags for
+downstream marts to filter on. Passed cleanly on first run, 84/84 tests
+project-wide.
+
+**Status: Part 1 of the Week 5 runbook is fully complete** — all 5 marts
+built and tested, the retention null overlay run and written to
+`audit_results.json`, the clean-window boundary enforced by test. Next:
+Part 2, Gate 7 (terminal stopping), the last open design question in the
+project, then Part 3 (charts, README, v0.5 tag).
+---
+
 ## Template for future entries
 
 ## YYYY-MM-DD — Week N, Step X: < short description>
