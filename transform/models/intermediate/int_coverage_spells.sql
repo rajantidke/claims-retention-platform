@@ -1,10 +1,11 @@
 with ordered as (
     select
         beneficiary_id,
+        pde_id,
         coverage_start,
         coverage_end,
         max(coverage_end) over (
-            partition by beneficiary_id order by coverage_start
+            partition by beneficiary_id order by coverage_start, pde_id
             rows between unbounded preceding and 1 preceding
         ) as prev_max_end
     from {{ ref('int_fill_events') }}
@@ -27,7 +28,7 @@ numbered as (
     select
         *,
         sum(is_new_spell) over (
-            partition by beneficiary_id order by coverage_start
+            partition by beneficiary_id order by coverage_start, pde_id
             rows between unbounded preceding and current row
         ) as spell_seq
     from flagged

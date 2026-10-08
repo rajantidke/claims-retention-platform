@@ -1416,6 +1416,70 @@ entries in the same pass, then finish Gate 7 and move to Part 3.
 
 ---
 
+## int_coverage_spells overlap bug — found and fixed
+
+**Found:** while closing out Gate 7 last session, the PDC cap check in
+`fct_pdc_monthly` showed 9 beneficiary-months where the pre-cap ratio
+(covered_days / days_in_month) exceeded 1.0 — meaning the per-person
+`least(1.0, ...)` cap was actually firing. Traced to 6 beneficiaries (of
+99,393 with any spell) whose constructed coverage spells in
+`int_coverage_spells` genuinely overlapped in calendar time.
+
+**Root cause:** the gaps-and-islands window functions in
+`int_coverage_spells.sql` ordered only by `coverage_start`:
+
+```sql
+max(coverage_end) over (
+    partition by beneficiary_id order by coverage_start
+    rows between unbounded preceding and 1 preceding
+)
+```
+
+When two fills for the same beneficiary shared an identical
+`coverage_start`, this `order by` was not a total order, so DuckDB was
+free to evaluate the tied rows in either physical order — a choice that
+could differ between query executions. Depending on which order was
+chosen, one of the tied fills could get attached to the *earlier* spell
+(dragging its end date forward) while the other started a new spell at
+the same date, producing two spells that overlapped by weeks.
+
+Confirmed directly: a fresh ad-hoc recomputation of the window logic
+against `int_fill_events` for beneficiary `14510A2376BA84B4` placed both
+tied 2008-09-03 fills into the same spell (correct), while the
+materialized `int_coverage_spells` table — built from the identical SQL
+— had split them across two overlapping spells (spell 1 end 2008-10-02,
+spell 2 start 2008-09-03). Same table, same model, different physical
+tie order between builds.
+
+Same category of bug as the Week 3 Gate 6 Polars sort-stability fix and
+the retention-null dtype bug: an `order by`/sort with no tiebreak on a
+unique key, silently execution-dependent.
+
+**Fix:** added `pde_id` as a tiebreak to both window functions' `order by`
+clauses (`order by coverage_start, pde_id`), and added `pde_id` to the
+`ordered` CTE's select list so it's available downstream. Committed as a
+single, minimal diff.
+
+**Verified:**
+- Rebuilt `int_coverage_spells` twice in a row; overlap-detection query
+  returned 0 rows both times (previously 6 beneficiaries / 9
+  beneficiary-months on the stale table, 4 beneficiaries / 7
+  beneficiary-months on first post-session-end rebuild before the fix).
+- Full `dbt build`: 84/84 tests passing.
+- `fct_pdc_monthly` June 2009: avg_pdc 0.87906 (was 0.879), max_pdc 1.0,
+  n_with_spell 70,124 — unchanged at the reported precision, as expected
+  given only 4–6 of 70k+ beneficiaries were affected. The fix corrects
+  what `max_pdc = 1.0` means (a real ceiling, not a cap silently masking
+  an overlap) rather than moving any published number.
+
+**Note for later:** a dbt test that directly asserts `int_coverage_spells`
+has no overlapping spells per beneficiary (e.g. a `dbt_utils.expression_is_true`
+comparing each spell's start against the previous spell's end within the
+same beneficiary, ordered by `spell_seq`) would catch any regression of
+this class automatically rather than relying on discovering it via the
+PDC cap. Candidate for Part 3 test hardening.
+
+---
 
 ## Template for future entries
 
