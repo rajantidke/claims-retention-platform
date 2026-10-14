@@ -38,3 +38,6 @@ test:
 
 clean:
 	rm -f data/claims.duckdb data/claims.duckdb.wal
+
+charts:
+	python -m audit.charts

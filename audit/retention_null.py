@@ -121,6 +121,45 @@ def compute_month6_retention(fills, cohorts, clean_window_end="2010-01-31"):
     return n_eligible, n_active
 
 
+def compute_retention_curve(fills, cohorts, max_k=16, clean_window_end=CLEAN_WINDOW_END):
+    """Pooled retention rate at every months_since_entry k from 0 to max_k,
+    each k restricted to cohorts eligible for it (entry_month + k <=
+    clean_window_end) -- the same logic as compute_month6_retention,
+    generalized across k. Descriptive only; no threshold or decision is
+    attached to any point on this curve except month 6, which is computed
+    separately by compute_month6_retention and governs the ruling."""
+    cwe = pl.lit(clean_window_end).str.to_date()
+    fills_by_month = (
+        fills.with_columns(pl.col("fill_date").dt.truncate("1mo").alias("fill_month"))
+        .select(["beneficiary_id", "fill_month"])
+        .unique()
+    )
+    rows = []
+    for k in range(max_k + 1):
+        c = cohorts.with_columns(
+            pl.col("entry_month").dt.offset_by(f"{k}mo").alias("calendar_month")
+        )
+        eligible = c.filter(pl.col("calendar_month") <= cwe)
+        n_elig = eligible.height
+        if n_elig == 0:
+            continue
+        active = eligible.join(
+            fills_by_month,
+            left_on=["beneficiary_id", "calendar_month"],
+            right_on=["beneficiary_id", "fill_month"],
+            how="semi",
+        )
+        rows.append(
+            {
+                "months_since_entry": k,
+                "n_eligible": n_elig,
+                "n_active": active.height,
+                "retention_rate": 100 * active.height / n_elig,
+            }
+        )
+    return pl.DataFrame(rows)
+
+
 def build_empirical_null(fills, seed=SEED):
     """Null B (context only). Redraw each beneficiary's fill dates from the
     pooled real fill-date distribution, keeping their own fill count fixed.
