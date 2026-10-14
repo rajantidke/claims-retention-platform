@@ -1479,6 +1479,75 @@ same beneficiary, ordered by `spell_seq`) would catch any regression of
 this class automatically rather than relying on discovering it via the
 PDC cap. Candidate for Part 3 test hardening.
 
+
+---
+## Gate 7 close-out — decision logic, sensitivity sweep, and a nondeterminism bug caught
+
+Added the remaining pieces to `audit/gate7_terminal_stop.py`: the
+pre-committed decision rule (`gate7_decision`), a sensitivity sweep across
+90/120/180/270-day gap thresholds reusing the same 20 drawn null
+replicates at every threshold (`gate7_sensitivity_sweep`), and a write to
+`reports/audit_results.json`.
+
+**A real bug, caught by running it twice before trusting it:** the first
+run produced different null medians on consecutive executions with the
+same seeds (`null_a_median_pct` 1.297 vs. 1.276, `relative_ratio` 1.707
+vs. 1.735). The real statistic was identical both times
+(`real_share_pct` 2.2139% exactly), isolating the bug to the null
+generation, not the real data.
+
+Root cause: `load_gate7_population`'s SQL had no `ORDER BY`, so DuckDB
+could return the population rows in a different order each execution.
+`build_null_a_trailing_gaps`/`build_null_b_trailing_gaps` consume the RNG
+sequentially in `population["n_fills"].to_list()` row order, so a
+different row order meant the same seed got applied to a different
+person each run — the seeds were fixed, but what they were applied to
+wasn't. Same bug class as the Week 3 Gate 2/3 fix (shuffle input with no
+`ORDER BY`) and the retention-null dtype bug: a step that looks
+deterministic because the seed is fixed, undermined by a non-deterministic
+upstream ordering feeding it.
+
+Fix: added `order by eb.beneficiary_id` to the final select in
+`load_gate7_population`. Verified with two consecutive runs piped to
+files and diffed, empty diff, confirming determinism.
+
+Added two tests to `tests/test_audit_determinism.py`
+(`test_gate7_population_deterministic`, `test_gate7_decision_deterministic`)
+following the existing pattern, so this class of regression is caught
+automatically going forward rather than relying on a by-hand rerun. Full
+suite: 10/10 passing.
+
+**Gate 7 final decision (180-day primary, pre-committed rule):**
+
+| | Value |
+|---|---|
+| Population | 59,216 |
+| Real share, trailing gap >= 180d | 2.2139% |
+| Null A median (20 redraws) | 1.276% (band 1.223-1.317%) |
+| Null B median (20 redraws) | 1.261% (band 1.180-1.346%) |
+| Relative ratio (bar: 1.25x) | 1.735x — clears |
+| Absolute gap (bar: 2.0pp) | 0.938pp — does not clear |
+| **Verdict** | **detectable_but_too_rare** |
+| **Module D target** | **low_engagement_le2_active_months_of_6** |
+
+**Sensitivity sweep** (same 20 null replicates, four thresholds):
+
+| Gap threshold | Real | Null A median | Null B median |
+|---|---|---|---|
+| 90d | 5.50% | 3.49% | 3.34% |
+| 120d | 3.88% | 2.31% | 2.23% |
+| 180d | 2.21% | 1.28% | 1.26% |
+| 270d | 1.16% | 0.64% | 0.64% |
+
+The real-to-null ratio stays in a consistent ~1.6-1.9x range across all
+four cutoffs, so the 180-day verdict isn't an artifact of that specific
+threshold choice — the signal is real and consistently weak everywhere
+it's checked, which is exactly the finding the decision rule is built to
+catch.
+
+Full `dbt build` after these changes: 84/84 tests passing, unrelated to
+this change but confirmed anyway as a clean baseline before committing.
+
 ---
 
 ## Template for future entries

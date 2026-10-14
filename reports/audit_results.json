@@ -184,5 +184,86 @@
     "threshold_T": 3.503870999556191,
     "D": 0.21007780553091138,
     "decision": "arithmetic"
+  },
+  "gate7_terminal_stop": {
+    "population": 59216,
+    "decision": {
+      "gap_days": 180,
+      "real_share_pct": 2.213928667927587,
+      "null_a_median_pct": 1.2868143744933802,
+      "null_a_band_pct": [
+        1.2429073223453122,
+        1.3340988921912997
+      ],
+      "null_b_median_pct": 1.259794650094569,
+      "null_b_band_pct": [
+        1.17704674412321,
+        1.3037017022426372
+      ],
+      "relative_bar": 1.25,
+      "relative_ratio": 1.720472440944882,
+      "clears_relative_bar": true,
+      "absolute_bar_pp": 2.0,
+      "d_absolute_pp": 0.9271142934342069,
+      "clears_absolute_bar": false,
+      "verdict": "detectable_but_too_rare",
+      "module_d_target": "low_engagement_le2_active_months_of_6"
+    },
+    "sensitivity_sweep": {
+      "90": {
+        "real_share_pct": 5.501891380707917,
+        "null_a_median_pct": 3.496521210483653,
+        "null_a_band_pct": [
+          3.414617670899757,
+          3.6679275871386112
+        ],
+        "null_b_median_pct": 3.336091596865712,
+        "null_b_band_pct": [
+          3.211969737908673,
+          3.463590921372602
+        ]
+      },
+      "120": {
+        "real_share_pct": 3.882396649554175,
+        "null_a_median_pct": 2.3262293974601462,
+        "null_a_band_pct": [
+          2.2409483923263984,
+          2.436841394217779
+        ],
+        "null_b_median_pct": 2.235882194001621,
+        "null_b_band_pct": [
+          2.129492029181302,
+          2.3118751688732777
+        ]
+      },
+      "180": {
+        "real_share_pct": 2.213928667927587,
+        "null_a_median_pct": 1.2868143744933802,
+        "null_a_band_pct": [
+          1.2429073223453122,
+          1.3340988921912997
+        ],
+        "null_b_median_pct": 1.259794650094569,
+        "null_b_band_pct": [
+          1.17704674412321,
+          1.3037017022426372
+        ]
+      },
+      "270": {
+        "real_share_pct": 1.1584706835990273,
+        "null_a_median_pct": 0.65522831667117,
+        "null_a_band_pct": [
+          0.6028776006484734,
+          0.7177114293434207
+        ],
+        "null_b_median_pct": 0.6315860578222101,
+        "null_b_band_pct": [
+          0.5859902728992165,
+          0.6704269116455012
+        ]
+      }
+    },
+    "n_redraws": 20,
+    "seed": 7
   }
 }

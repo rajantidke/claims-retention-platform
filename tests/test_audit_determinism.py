@@ -22,6 +22,11 @@ from audit.fidelity import (
     gate6_test3_file_connectivity,
     part_d_corrections,
 )
+from audit.gate7_terminal_stop import (
+    gate7_decision,
+    load_gate7_population,
+    run_gate7_bands,
+)
 
 FIXTURE_DB = "data/claims_ci.duckdb"
 
@@ -70,3 +75,15 @@ def test_gate6_test3_deterministic(con):
 
 def test_part_d_corrections_deterministic(con):
     assert part_d_corrections(con) == pytest.approx(part_d_corrections(con))
+
+
+def test_gate7_population_deterministic(con):
+    assert load_gate7_population(con).to_dicts() == load_gate7_population(con).to_dicts()
+
+
+def test_gate7_decision_deterministic(con):
+    pop_a, shares_a = run_gate7_bands(con, n_redraws=3)
+    pop_b, shares_b = run_gate7_bands(con, n_redraws=3)
+    decision_a = gate7_decision(pop_a, shares_a)
+    decision_b = gate7_decision(pop_b, shares_b)
+    assert decision_a == pytest.approx(decision_b)

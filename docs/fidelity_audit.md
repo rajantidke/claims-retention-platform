@@ -578,3 +578,92 @@ a project in crisis being patched together after the fact. It's a project
 that checked its assumptions before building on them, found two that
 didn't hold, and had already planned for exactly that possibility either
 way it went.
+
+## Gate 7: does activity near the end of the file ever look like a real stop?
+
+Gate 6 answered whether the *spacing* between fills carries real meaning,
+by anchoring each person's first and last real fill and only scrambling
+what happened in between. That left one question unanswered: does the
+*end* of a person's observation window — their last fill landing well
+before the clean window closes — ever look like a genuine behavioral
+stop, rather than simply running out of file to be observed in?
+
+This matters directly for Module D. "Did this person stop filling
+prescriptions" is exactly the kind of prediction target the rest of this
+document has been cautious about, and before building a model around it,
+the honest thing to do was test whether it's real.
+
+**The test.** Among beneficiaries alive through the end of the clean
+window, with a full year of Part D coverage in both 2008 and 2009, and at
+least one fill inside the clean window, 2.21% had their last fill 180 or
+more days before the window closed. Call this the real trailing-gap
+share.
+
+The question is whether 2.21% is more than you'd expect by chance. The
+comparison can't simply scramble each person's fill dates and reuse their
+real last fill, because the thing being tested *is* the last fill. So the
+null redraws each person's fill *dates*, keeping their real fill *count*
+fixed (the same fill-count-preserving principle from Gate 6 and the
+retention-threshold null, applied here because someone with few fills in
+a long window is genuinely more likely to have their last one land early
+by chance — a null that ignored fill count would be comparing against
+the wrong thing). Two versions were built: one drawing from the real,
+population-wide distribution of fill dates (Null A, primary), one drawing
+uniformly across the window (Null B, secondary, as corroboration). Each
+was run 20 times with different random seeds to produce a band rather
+than a single number.
+
+**The decision rule, set before the real number was computed:** a result
+only counts as a real, actionable dropout signal if it clears two bars at
+once — the real share has to be at least 1.25x the null's median (a
+relative bar, so the finding isn't just noise), *and* at least 2
+percentage points above it (an absolute bar, so a real-but-tiny effect
+doesn't get treated as a usable signal). Clearing the relative bar alone
+means the pattern is real but too rare to build a primary target around;
+clearing neither means it's arithmetic.
+
+**Result:**
+
+| | |
+|---|---|
+| Population | 59,216 |
+| Real trailing-gap share (>=180 days) | 2.21% |
+| Null A median (20 redraws) | 1.28% |
+| Null B median (20 redraws) | 1.26% |
+| Relative bar (1.25x) | Cleared — real is 1.7x the null median |
+| Absolute bar (2.0 percentage points) | Not cleared — the gap is 0.94 points |
+
+So: the pattern is real. 2.21% is well above what random chance alone
+would produce. But it's a small fraction of the population, and the gap
+between "real" and "chance" is under a single percentage point. Checked
+again at three other gap lengths (90, 120, and 270 days, reusing the same
+20 random draws so each check is answering the same question rather than
+running a fresh experiment every time), the real share stays at a
+consistent 1.6-1.9x the chance level at every length tried. That
+consistency is itself evidence the finding isn't an artifact of picking
+180 days specifically — it's a real, if modest, signal everywhere it was
+checked.
+
+**What this means for Module D.** A real pattern this rare and this close
+to the chance baseline isn't a sound foundation for a primary prediction
+target. Training a model to predict "churn" on roughly 600 excess people
+against a background of fill-count-driven noise would mean a model
+learning mostly from intensity, dressed up as something more clinically
+dramatic than the evidence supports — exactly the overclaiming this whole
+document has tried to avoid. Module D's target moved instead to something
+the data can actually support cleanly: low engagement, defined as two or
+fewer active months out of six. That's a more modest claim, and a more
+honest one.
+
+One bug surfaced in building this test, worth recording because it's a
+recurring shape in this project: an early version of the null-generation
+code produced slightly different results on consecutive runs with
+identical random seeds. The cause wasn't the randomization itself but an
+upstream SQL query with no explicit row ordering — the same seed was
+being applied to a different person each run, because the population
+rows themselves came back in an arbitrary order. Same root cause as
+earlier reproducibility bugs in this project (Gate 2 and Gate 3's
+original shuffle queries, Gate 6 Test 1's tie-break): code that looks
+deterministic because a seed is fixed can still be nondeterministic if
+something upstream of it isn't. Fixed, and now covered by an automated
+test that reruns the check and fails if it ever regresses.

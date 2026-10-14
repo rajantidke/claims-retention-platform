@@ -12,10 +12,21 @@ and 2009 (the only two full years inside the clean window), at least one
 fill in [derived_start, clean_window_end].
 
 Real trailing gap = clean_window_end - last_fill_date.
-Statistic: share of the population with a trailing gap >= 180 days.
+Statistic: share of the population with a trailing gap >= N days.
+
+Decision rule (pre-committed, see docs/progress-log.md): a result counts
+as a real, actionable dropout signal only if it clears BOTH bars below,
+decided before the real statistic was computed:
+  - relative: real share >= DECISION_RELATIVE_BAR x the Null A median
+  - absolute: real share - Null A median >= DECISION_ABSOLUTE_BAR_PP points
+Clearing relative but not absolute means the signal is real but too rare
+to be a primary Module D target; Module D instead targets low engagement
+(<=2 active months of 6).
 """
 
 import datetime
+import json
+from pathlib import Path
 
 import duckdb
 import numpy as np
@@ -25,6 +36,11 @@ DB_PATH = "data/claims.duckdb"
 SEED = 7
 CLEAN_WINDOW_END = "2010-01-31"
 GAP_DAYS = 180
+SENSITIVITY_GAP_DAYS = [90, 120, 180, 270]
+N_REDRAWS = 20
+DECISION_RELATIVE_BAR = 1.25
+DECISION_ABSOLUTE_BAR_PP = 2.0
+RESULTS_PATH = Path("reports/audit_results.json")
 
 
 def load_gate7_population(con):
@@ -66,6 +82,7 @@ def load_gate7_population(con):
 
         from eligible_beneficiaries eb
         inner join last_fills lf on eb.beneficiary_id = lf.beneficiary_id
+        order by eb.beneficiary_id
     """).pl()
 
 
@@ -82,16 +99,16 @@ def load_pooled_fill_dates(con, analysis_start="2008-04-01", clean_window_end=CL
 
 
 def build_null_a_trailing_gaps(population, pool, seed=SEED):
-    """Null A: for each person, keep their real fill COUNT fixed, draw
-    that many dates from the pooled empirical fill-date distribution over
-    the trimmed window, and take the max as their null last-fill-date.
-    This mirrors a real person's last fill being whichever of their real
-    fills happened latest -- someone with few fills in a long window is
-    genuinely more likely to have their last one land earlier by chance,
-    and this null reproduces that correctly instead of ignoring fill
-    count entirely (an earlier, flawed version of this function drew one
-    disconnected date per person regardless of their real fill count --
-    caught and fixed before use, see progress log)."""
+    """Null A (primary): for each person, keep their real fill COUNT
+    fixed, draw that many dates from the pooled empirical fill-date
+    distribution over the trimmed window, and take the max as their null
+    last-fill-date. This mirrors a real person's last fill being whichever
+    of their real fills happened latest -- someone with few fills in a
+    long window is genuinely more likely to have their last one land
+    earlier by chance, and this null reproduces that correctly instead of
+    ignoring fill count entirely (an earlier, flawed version of this
+    function drew one disconnected date per person regardless of their
+    real fill count -- caught and fixed before use, see progress log)."""
     rng = np.random.default_rng(seed)
     pool_size = pool.len()
 
@@ -139,29 +156,126 @@ def build_null_b_trailing_gaps(
     )
 
 
-def run_gate7_bands(con, n_redraws=20, seed=SEED):
+def real_share(population, gap_days):
+    """Share of the population with a trailing gap >= gap_days, as a
+    percentage."""
+    return 100 * (population["trailing_gap_days"] >= gap_days).mean()
+
+
+def run_gate7_bands(con, n_redraws=N_REDRAWS, seed=SEED, gap_days_list=SENSITIVITY_GAP_DAYS):
     """Run both Gate 7 nulls across n_redraws seeded replicates, collecting
-    the share with a 180+ day trailing gap from each. This is the band --
-    required before the real statistic is treated as a result."""
+    the share with a trailing gap >= g for every g in gap_days_list from
+    EACH replicate -- so the sensitivity sweep reuses the same drawn fake
+    worlds at every threshold, rather than redrawing independently per
+    threshold. Returns the population and a dict keyed by gap_days, each
+    holding the list of per-redraw shares for null_a and null_b."""
     pop = load_gate7_population(con)
     pool = load_pooled_fill_dates(con)
 
-    shares_a, shares_b = [], []
+    shares = {g: {"null_a": [], "null_b": []} for g in gap_days_list}
+
     for i in range(n_redraws):
         null_a = build_null_a_trailing_gaps(pop, pool, seed=seed + i)
         null_b = build_null_b_trailing_gaps(pop, seed=seed + i)
-        shares_a.append(100 * (null_a["trailing_gap_days"] >= GAP_DAYS).mean())
-        shares_b.append(100 * (null_b["trailing_gap_days"] >= GAP_DAYS).mean())
+        for g in gap_days_list:
+            shares[g]["null_a"].append(real_share(null_a, g))
+            shares[g]["null_b"].append(real_share(null_b, g))
 
-    return pop, shares_a, shares_b
+    return pop, shares
+
+
+def gate7_decision(population, shares, gap_days=GAP_DAYS):
+    """The pre-committed decision rule, applied at the primary 180-day
+    threshold. See module docstring for the rule itself."""
+    real = real_share(population, gap_days)
+    null_a_band = shares[gap_days]["null_a"]
+    null_b_band = shares[gap_days]["null_b"]
+    null_a_median = float(np.median(null_a_band))
+    null_b_median = float(np.median(null_b_band))
+
+    d_absolute_pp = real - null_a_median
+    relative_ratio = real / null_a_median if null_a_median else float("inf")
+
+    clears_relative = relative_ratio >= DECISION_RELATIVE_BAR
+    clears_absolute = d_absolute_pp >= DECISION_ABSOLUTE_BAR_PP
+
+    if clears_relative and clears_absolute:
+        verdict = "real_dropout_process"
+        module_d_target = "terminal_stop_180d"
+    elif clears_relative and not clears_absolute:
+        verdict = "detectable_but_too_rare"
+        module_d_target = "low_engagement_le2_active_months_of_6"
+    else:
+        verdict = "arithmetic"
+        module_d_target = None
+
+    return {
+        "gap_days": gap_days,
+        "real_share_pct": real,
+        "null_a_median_pct": null_a_median,
+        "null_a_band_pct": [min(null_a_band), max(null_a_band)],
+        "null_b_median_pct": null_b_median,
+        "null_b_band_pct": [min(null_b_band), max(null_b_band)],
+        "relative_bar": DECISION_RELATIVE_BAR,
+        "relative_ratio": relative_ratio,
+        "clears_relative_bar": clears_relative,
+        "absolute_bar_pp": DECISION_ABSOLUTE_BAR_PP,
+        "d_absolute_pp": d_absolute_pp,
+        "clears_absolute_bar": clears_absolute,
+        "verdict": verdict,
+        "module_d_target": module_d_target,
+    }
+
+
+def gate7_sensitivity_sweep(population, shares, gap_days_list=SENSITIVITY_GAP_DAYS):
+    """Real share vs. both null medians/bands at each cutoff in
+    gap_days_list, reusing the same drawn replicates from run_gate7_bands."""
+    sweep = {}
+    for g in gap_days_list:
+        null_a_band = shares[g]["null_a"]
+        null_b_band = shares[g]["null_b"]
+        sweep[g] = {
+            "real_share_pct": real_share(population, g),
+            "null_a_median_pct": float(np.median(null_a_band)),
+            "null_a_band_pct": [min(null_a_band), max(null_a_band)],
+            "null_b_median_pct": float(np.median(null_b_band)),
+            "null_b_band_pct": [min(null_b_band), max(null_b_band)],
+        }
+    return sweep
 
 
 if __name__ == "__main__":
     con = duckdb.connect(DB_PATH, read_only=True)
-    pop = load_gate7_population(con)
+
+    print(f"Running {N_REDRAWS} redraws across thresholds {SENSITIVITY_GAP_DAYS} days...")
+    pop, shares = run_gate7_bands(con, n_redraws=N_REDRAWS, gap_days_list=SENSITIVITY_GAP_DAYS)
     print(f"Gate 7 population: {pop.height:,}")
 
-    share_180plus = (pop["trailing_gap_days"] >= GAP_DAYS).mean()
-    print(f"Share with trailing gap >= {GAP_DAYS} days: {100 * share_180plus:.1f}%")
+    decision = gate7_decision(pop, shares, gap_days=GAP_DAYS)
+    sweep = gate7_sensitivity_sweep(pop, shares, gap_days_list=SENSITIVITY_GAP_DAYS)
+
+    print(f"\n=== GATE 7 DECISION ({GAP_DAYS}-day primary) ===")
+    for k, v in decision.items():
+        print(f"  {k}: {v}")
+
+    print("\n=== SENSITIVITY SWEEP ===")
+    for g, vals in sweep.items():
+        print(
+            f"  {g}d: real={vals['real_share_pct']:.2f}%  "
+            f"null_a_median={vals['null_a_median_pct']:.2f}%  "
+            f"null_b_median={vals['null_b_median_pct']:.2f}%"
+        )
+
+    existing = json.loads(RESULTS_PATH.read_text()) if RESULTS_PATH.exists() else {}
+    existing["gate7_terminal_stop"] = {
+        "population": pop.height,
+        "decision": decision,
+        "sensitivity_sweep": sweep,
+        "n_redraws": N_REDRAWS,
+        "seed": SEED,
+    }
+    RESULTS_PATH.parent.mkdir(exist_ok=True)
+    RESULTS_PATH.write_text(json.dumps(existing, indent=2, default=str))
+    print(f"\nResults written to {RESULTS_PATH}")
 
     con.close()
