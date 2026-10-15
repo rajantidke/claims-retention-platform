@@ -1637,6 +1637,51 @@ empirical distribution rather than simulated from a normal one.
 
 ---
 
+## 2026-10-15 — Week 6, Part 3: bootstrap Type-I validation and power-curve comparison
+
+Built `experiments/simulation/validation.py`: bootstrap A/A test
+(resampling two arms with replacement from the real post-period
+active-months distribution, and its <=2-month binary indicator) at
+three sample sizes (200/arm, 2,000/arm, full population ~30k/arm),
+10,000 replicates each.
+
+**Result:** empirical FPR nominal (within the binomial CI of 5%) at
+all three sizes, both metrics: the t-test and pooled two-proportion
+z-test both hold their advertised size on this project's real,
+bounded, non-normal metric shape; no small-sample failure found.
+
+**Power curve** (injected additive effect vs. `power.py`'s analytic
+`power_for`): continuous metric well-calibrated everywhere (max
+0.16pp deviation, Monte Carlo noise); binary metric conservative by
+up to 3.47pp at moderate effect sizes - traced to the pooled-variance
+test statistic vs. the analytic formula's single-variance assumption,
+the same tradeoff flagged and consciously left as-is during Part 2's
+design review.
+
+**Bug found and fixed:** the binary effect-injection method flipped a
+fraction `effect` of zero-valued draws, which delivers an actual rate
+shift of `effect * (1 - baseline_p)`, not `effect`, understating
+injected effects by ~9% at this project's baseline rate and producing
+an 11.46pp spurious deviation before the fix (flip probability
+corrected to `effect / (1 - baseline_p)`).
+
+Also fixed a display-only issue: the power curve's `effect=0` row
+hardcoded `analytic_power=0.0` instead of calling `power_for`, which
+correctly returns ~alpha/2 at effect=0, a reminder that the analytic
+power formula captures one tail and isn't meaningful at effect=0 (the
+A/A sweep above is the right place to validate the true two-sided
+Type-I rate).
+
+Two-run determinism check: clean diff, exit 0. New test module
+`tests/test_validation.py` (8 tests, small-scale mechanics checks,
+determinism, binomial CI, effect-injection correctness, not a
+reproduction of the full 10k-replicate sweep). Full suite: 32/32
+passing.
+
+---
+
+
+
 
 ## Template for future entries
 
