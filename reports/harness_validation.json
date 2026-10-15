@@ -1,0 +1,18 @@
+{
+  "baseline_parameters": {
+    "eligible_population": 60725,
+    "mean_post_active_months": 4.975858377933306,
+    "sd_post_active_months": 1.5562515811914988,
+    "baseline_le2_active_months_rate": 0.0892383696994648,
+    "pre_post_pearson_rho": 0.7602297482296669,
+    "pre_period": [
+      "2008-08-01",
+      "2009-02-01"
+    ],
+    "post_period": [
+      "2009-02-01",
+      "2009-08-01"
+    ],
+    "randomization_date": "2009-02-01"
+  }
+}

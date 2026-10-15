@@ -1578,6 +1578,65 @@ itself.
 
 ---
 
+## 2026-10-15 — Week 6, Part 1: baseline parameters
+
+Built `experiments/simulation/baseline.py`.
+Hypothetical outreach experiment pinned to real dates: randomize on
+2009-02-01, pre-period Aug 2008-Jan 2009, post-period Feb-Jul 2009, both
+inside the clean analysis window with margin at both ends.
+
+**A real off-by-one caught before running**: PRE_END was first set to
+2009-01-01 with an exclusive `<` bound, which silently excluded January
+2009 from the pre-period, making it 5 months (Aug-Dec) instead of 6
+(Aug-Jan). Caught by inspection before trusting the output, not by a
+test, no test currently checks period length. Fixed: PRE_END =
+POST_START = 2009-02-01, since the two periods are adjacent.
+
+Population: alive at 2009-07-01, full-year Part D in both 2008 and 2009,
+same restriction as Gate 7, same reasoning (month-level activity isn't
+trustworthy without full-year coverage that year).
+
+**Result**: 60,725 eligible. Post-period active months mean 4.976 (SD
+1.556, out of 6). Baseline <=2-active-months rate: 8.92%, notably
+higher than Gate 7's 2.21% terminal-stop rate, as expected since these
+are different (overlapping) populations: low engagement vs. a near-total
+stop. Pre/post Pearson rho: 0.760, inside the 0.6-0.8 range predicted
+before running (fill count is strongly person-level preserved per Gate
+6, and active months is a coarsened fill count) - a good sign the period
+construction is sound, not a coincidence worth ignoring.
+
+**Status:** Part 1 complete. Next: Part 2, the power/MDE calculator,
+built against these real baseline numbers rather than assumed ones.
+
+---
+
+## 2026-10-15 — Week 6, Part 2: power/MDE calculator
+
+Built `experiments/simulation/power.py` per the runbook: mde/n functions
+for both continuous (active months) and binary (<=2-month share)
+metrics, unequal-allocation support via a 1/(k(1-k)) variance-inflation
+factor, z-scores computed from scipy rather than a hardcoded constant.
+10 tests in `tests/test_power.py`: round-trip consistency (n_for_* then
+power_for recovers 80%), monotonicity in n/SD/mde/allocation, and two
+published-value sanity checks (Cohen d=0.5 ~64/arm; 50%->60% proportion
+shift ~393/arm). All 10 passing.
+
+Run against the real Part 1 baseline (population 60,725; post mean
+4.976, SD 1.556; baseline <=2-month rate 8.92%): full-population MDE is
+0.035 months (continuous) / 0.65pp (binary) - both tiny, since the
+eligible population is far larger than either metric needs. N required
+for a 0.25-month lift: 609/arm. N required for a 2pp reduction in the
+<=2-month share: 3,189/arm. Both numbers are the spine for Module F's
+eventual decision memo, anchored to this project's real SD/baseline
+rather than assumed values.
+
+**Status:** Part 2 complete. Next: Part 3, Type-I validation and power
+curves - the module's intellectual core, bootstrapped from the real
+empirical distribution rather than simulated from a normal one.
+
+
+---
+
 
 ## Template for future entries
 
