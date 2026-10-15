@@ -677,9 +677,17 @@ def main():
         f"Pair 2: Average cost for exactly 1 admission: ${pd_corr['pair2_cost_per_admission']:,.2f}"
     )
 
-    # Write consolidated results for diffing against the report / CI checks
-    Path("reports").mkdir(exist_ok=True)
-    Path("reports/audit_results.json").write_text(json.dumps(results, indent=2, default=str))
+    # Write consolidated results for diffing against the report / CI checks.
+    # Merge into whatever's already there rather than overwrite it completely.
+    # audit/retention_null.py and audit/gate7_terminal_stop.py write their own
+    # keys to this same file, and a blind overwrite here was silently
+    # clobbering both of theirs every time `make audit` ran (found 2026-10-14:
+    # a rerun had dropped retention_null and gate7_terminal_stop entirely).
+    results_path = Path("reports/audit_results.json")
+    results_path.parent.mkdir(exist_ok=True)
+    existing = json.loads(results_path.read_text()) if results_path.exists() else {}
+    existing.update(results)
+    results_path.write_text(json.dumps(existing, indent=2, default=str))
 
     print("\n" + "=" * 60)
     print("FIDELITY AUDIT COMPLETE")

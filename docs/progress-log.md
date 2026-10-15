@@ -1549,6 +1549,35 @@ Full `dbt build` after these changes: 84/84 tests passing, unrelated to
 this change but confirmed anyway as a clean baseline before committing.
 
 ---
+### 2026-10-14 — audit_results.json silent-overwrite bug
+
+`audit/fidelity.py`'s `main()` wrote `reports/audit_results.json` with a
+plain `Path(...).write_text(json.dumps(results, ...))` , which was a full
+overwrite, not a merge. `audit/retention_null.py` and
+`audit/gate7_terminal_stop.py` both already did read-merge-write
+correctly when writing their own keys to the same file, but every
+`make audit` run (which only invokes `fidelity.py`) silently clobbered
+both of theirs back out. Found when a fresh `make audit` run left
+`retention_null` and `gate7_terminal_stop` missing from the file
+entirely.
+
+Fixed by making `fidelity.py` read-merge-write too, consistent with the
+other two scripts. Recovered by rerunning all three in order:
+`fidelity.py` → `retention_null.py` → `gate7_terminal_stop.py`.
+Confirmed all 11 expected top-level keys present
+(`gate1`...`gate6_test3`, `part_d_corrections`, `retention_null`,
+`gate7_terminal_stop`).
+
+Pretty similar as this project's recurring "looks safe, isn't" bug
+pattern (Gate 2/3 shuffle order, Gate 6 Test 1 tiebreak,
+`int_coverage_spells` tiebreak, Gate 7 population ordering), this one
+a clobbering-write instead of a nondeterministic-order issue, but the
+same root lesson: any script that reads or writes shared state needs
+to be checked against what else touches that state, not just against
+itself.
+
+---
+
 
 ## Template for future entries
 

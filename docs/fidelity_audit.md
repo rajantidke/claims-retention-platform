@@ -300,18 +300,15 @@ weaker than they should be, though not necessarily broken outright once
 you account for real-world structure like the disability-eligibility
 pattern above.
 
-## Part E: Six tests to settle exactly what this data can support
+## Part E: Seven tests to settle exactly what this data can support
 
 The drug-identity discovery in Part C raised a bigger question worth
 answering properly rather than assuming: if individual drug codes are
 this unreliable, what else in this file might look fine on the surface but
-fall apart under closer inspection? The gate design was reviewed before any
-test was run, then six specific tests were built to
-answer that, each one aimed at a single, precise question, with the
-outcome decided in advance for every possible result. That last part
+fall apart under closer inspection? The gate design was reviewed before any test was run, then seven specific tests were built to answer that, each one aimed at a single, precise question, with the outcome decided in advance for every possible result. That last part
 mattered. It meant no test could quietly turn into a reason to second-guess
 the whole project. Whatever came back, there was already a clear next step
-attached to it.
+attached to it. Six of them close out this section; the seventh, on whether an ending gap looks like a real stop, needed its own null design and is written up on its own further below.
 
 A few of these tests use a technique worth explaining once, since it comes
 up repeatedly: a shuffle test, sometimes called a permutation test. The
@@ -433,7 +430,7 @@ issue, because it means the concept of "this person stopped taking their
 medicine," measured purely from timing gaps, isn't something this
 particular file can support on its own.
 
-**What this adds up to.** Across all six gates, a consistent pattern
+**What this adds up to.** Across these six gates, a consistent pattern
 emerges. Anything measured or counted within a single claim survives the
 scrambling process intact: costs, admission counts, whether someone filled
 anything at all in a given month. Anything that depends on connecting one
@@ -463,6 +460,8 @@ the actual result, and the verdict that follows from it.
 | Age and chronic condition count move together (65+) | Corrected Q12 Pair 1: Spearman, 65+ only | ρ = 0.159, monotonic across decades | Survives, modestly |
 | Hospital admissions and hospital cost move together | Corrected Q12 Pair 2: Pearson, 2008-matched | ρ = 0.828; $8,503 average cost for one admission | Survives, strongly |
 | Chronic condition count and total yearly cost move together | Q12 Pair 3: Pearson | ρ = 0.553 | Survives, moderately |
+| Terminal stopping near the end of the window is a real behavioral stop | Gate 7: real vs. two fill-count-preserving nulls, 20 redraws | Real 2.21% vs. Null A median 1.29% (1.72x), absolute gap 0.93pp | Detectable but too rare to model |
+| Entry-cohort retention shows structure beyond fill count and span | Retention null: pooled month-6, 20 redraws | Real 23.15%, null median 23.36%, D = 0.21pp against T = 3.50pp | Does not survive — arithmetic |
 
 ## Constraints this places on the analysis
 
@@ -635,18 +634,11 @@ clearing neither means it's arithmetic.
 
 So: the pattern is real. 2.21% is well above what random chance alone
 would produce. But it's a small fraction of the population, and the gap
-between "real" and "chance" is under a single percentage point. Checked
-again at three other gap lengths (90, 120, and 270 days, reusing the same
-20 random draws so each check is answering the same question rather than
-running a fresh experiment every time), the real share stays at a
-consistent 1.6-1.9x the chance level at every length tried. That
-consistency is itself evidence the finding isn't an artifact of picking
-180 days specifically — it's a real, if modest, signal everywhere it was
-checked.
+between "real" and "chance" is under a single percentage point. Checked again at three other gap lengths (90, 120, and 270 days, reusing the same 20 random draws so each check is answering the same question rather than running a fresh experiment every time), the real share runs 1.57x the Null A median at 90 days, 1.67x at 120, 1.72x at 180, and 1.77x at 270 (against Null B, 1.65x to 1.83x). The ratio isn’t flat, it rises steadily with gap length, which is itself informative: it’s what you’d expect if the excess over chance is concentrated in genuinely long gaps rather than spread evenly across all of them, and it rules out the finding being an artifact of picking 180 days specifically.
 
 **What this means for Module D.** A real pattern this rare and this close
 to the chance baseline isn't a sound foundation for a primary prediction
-target. Training a model to predict "churn" on roughly 600 excess people
+target. Training a model to predict "churn" on 549 excess people (2.21% of 59,216 real, against Null A’s median of 1.29%) excess people
 against a background of fill-count-driven noise would mean a model
 learning mostly from intensity, dressed up as something more clinically
 dramatic than the evidence supports — exactly the overclaiming this whole

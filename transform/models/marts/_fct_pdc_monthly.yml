@@ -14,9 +14,13 @@ models:
       the aggregate level: if it ever exceeds 1.0, that signals a real
       bug in the overlap or spell-merge logic, since no beneficiary can
       be covered more than 100% of a month's days. Per-beneficiary-month
-      pdc values are capped at 1.0 (two overlapping spells covering the
-      same day should not double-count days), which is a legitimate
-      ceiling, not the same concern as capping the aggregate.
+      pdc is uncapped too: a least(1.0, ...) cap sat here until 2026-10,
+      when the int_coverage_spells tiebreak bug it was silently absorbing
+      (9 beneficiary-months, found 2026-10-07) was fixed. Confirmed the
+      cap had become dead code (zero raw-ratio violations post-fix) and
+      removed it, replacing it with
+      tests/assert_pdc_never_exceeds_one.sql, a singular test that fails
+      loudly on any future violation instead of quietly capping it.
     columns:
       - name: month_start
         data_tests:

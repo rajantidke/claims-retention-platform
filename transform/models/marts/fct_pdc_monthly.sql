@@ -35,8 +35,8 @@ pdc_by_beneficiary_month as (
         month_start,
         covered_days,
         extract(day from (month_start + interval 1 month - interval 1 day)::date) as days_in_month,
-        least(1.0, covered_days::double
-            / extract(day from (month_start + interval 1 month - interval 1 day)::date)) as pdc
+        covered_days::double
+            / extract(day from (month_start + interval 1 month - interval 1 day)::date) as pdc
 
     from covered_days_by_beneficiary_month
 )
